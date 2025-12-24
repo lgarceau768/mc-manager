@@ -12,23 +12,26 @@ class DockerService {
   /**
    * Create a new Minecraft server container
    */
-  async createContainer({ serverId, name, version, port, memory, cpuLimit, volumePath }) {
+  async createContainer({ serverId, name, version, port, memory, cpuLimit, volumePath, volumeHostPath, type }) {
     try {
       logger.info(`Creating container for server: ${name}`);
+      const hostDataPath = volumeHostPath || volumePath;
 
       // Parse memory to get limit in bytes (slightly higher than JVM heap)
       const memoryLimit = this.parseMemoryToBytes(memory) * 1.5;
+      const serverType = (type || 'PAPER').toUpperCase();
 
       const containerConfig = {
         name: `mc-${serverId}`,
         Image: 'itzg/minecraft-server:latest',
         Env: [
           'EULA=TRUE',
-          'TYPE=PAPER',
+          `TYPE=${serverType}`,
           `VERSION=${version}`,
           `MEMORY=${memory}`,
           `SERVER_NAME=${name}`,
-          'ONLINE_MODE=TRUE'
+          'ONLINE_MODE=TRUE',
+          `SERVER_PORT=${port}`
         ],
         ExposedPorts: {
           '25565/tcp': {}
@@ -37,7 +40,7 @@ class DockerService {
           PortBindings: {
             '25565/tcp': [{ HostPort: port.toString() }]
           },
-          Binds: [`${volumePath}:/data`],
+          Binds: [`${hostDataPath}:/data`],
           RestartPolicy: { Name: 'unless-stopped' },
           Memory: memoryLimit,
           ...(cpuLimit && { NanoCpus: cpuLimit * 1e9 })
@@ -233,7 +236,8 @@ class DockerService {
       const exec = await container.exec({
         Cmd: cmd,
         AttachStdout: true,
-        AttachStderr: true
+        AttachStderr: true,
+        Tty: true
       });
 
       const stream = await exec.start();
@@ -245,7 +249,7 @@ class DockerService {
         });
 
         stream.on('end', () => {
-          resolve(output);
+          resolve(output.trim());
         });
 
         stream.on('error', (error) => {

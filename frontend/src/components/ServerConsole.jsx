@@ -5,26 +5,26 @@ import './ServerConsole.css';
 function ServerConsole({ serverId }) {
   const [logs, setLogs] = useState([]);
   const [command, setCommand] = useState('');
-  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [connectionStatus, setConnectionStatus] = useState('connecting');
+  const [refreshCounter, setRefreshCounter] = useState(0);
   const logsEndRef = useRef(null);
   const wsClient = useRef(null);
 
   useEffect(() => {
-    // Create WebSocket client
+    setConnectionStatus('connecting');
+    setLogs([]);
     wsClient.current = createWebSocketClient();
 
-    // Connect to server console
     wsClient.current.connect(serverId, (message) => {
       handleWebSocketMessage(message);
     });
 
-    // Cleanup on unmount
     return () => {
       if (wsClient.current) {
         wsClient.current.disconnect();
       }
     };
-  }, [serverId]);
+  }, [serverId, refreshCounter]);
 
   useEffect(() => {
     // Auto-scroll to bottom when new logs arrive
@@ -84,7 +84,25 @@ function ServerConsole({ serverId }) {
           ]);
         }
         break;
+
+      case 'command_result':
+        setLogs((prev) => [
+          ...prev,
+          {
+            timestamp: message.timestamp || new Date().toISOString(),
+            message: `Command "${message.command}" ${message.success ? 'sent' : 'failed'}`,
+            type: message.success ? 'status' : 'error'
+          }
+        ]);
+        break;
     }
+  };
+
+  const handleRefresh = () => {
+    setLogs([]);
+    setCommand('');
+    setConnectionStatus('connecting');
+    setRefreshCounter((prev) => prev + 1);
   };
 
   const handleSendCommand = (e) => {
@@ -123,6 +141,8 @@ function ServerConsole({ serverId }) {
         return 'status-connected';
       case 'disconnected':
         return 'status-disconnected';
+      case 'connecting':
+        return 'status-connecting';
       default:
         return '';
     }
@@ -132,9 +152,19 @@ function ServerConsole({ serverId }) {
     <div className="server-console">
       <div className="console-header">
         <h3>Server Console</h3>
-        <span className={`connection-status ${getConnectionStatusClass()}`}>
-          {connectionStatus}
-        </span>
+        <div className="console-header-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleRefresh}
+            disabled={connectionStatus === 'connecting'}
+          >
+            ↻ Refresh
+          </button>
+          <span className={`connection-status ${getConnectionStatusClass()}`}>
+            {connectionStatus}
+          </span>
+        </div>
       </div>
 
       <div className="console-logs">

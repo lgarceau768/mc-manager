@@ -1,0 +1,106 @@
+.file-explorer-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.file-explorer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.file-explorer-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.file-explorer-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.breadcrumb {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.breadcrumb.active {
+  color: #2c3e50;
+  cursor: default;
+}
+
+.breadcrumb-separator {
+  color: #6c757d;
+}
+
+.file-explorer-list {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.file-explorer-list table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.file-explorer-list th,
+.file-explorer-list td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.file-explorer-list th {
+  background: #f8fafc;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+}
+
+.file-explorer-list tr:last-child th,
+.file-explorer-list tr:last-child td {
+  border-bottom: none;
+}
+
+.file-explorer-empty,
+.file-explorer-error {
+  padding: 1rem;
+  text-align: center;
+  color: #6c757d;
+}
+
+.file-explorer-error {
+  color: #c5221f;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  padding: 0;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+.file-upload-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}

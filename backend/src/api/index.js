@@ -1,5 +1,6 @@
 import express from 'express';
 import serversRouter from './routes/servers.js';
+import modpacksRouter from './routes/modpacks.js';
 import { errorHandler } from '../utils/errors.js';
 import logger from '../utils/logger.js';
 
@@ -19,6 +20,7 @@ router.use((req, res, next) => {
 
 // Mount routes
 router.use('/servers', serversRouter);
+router.use('/modpacks', modpacksRouter);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

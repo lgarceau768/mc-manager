@@ -1,0 +1,71 @@
+.server-icon-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.server-icon-card h3 {
+  margin: 0;
+}
+
+.server-icon-preview {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5rem;
+}
+
+.server-icon-preview img,
+.server-icon-preview .icon-placeholder {
+  width: 96px;
+  height: 96px;
+  border-radius: 12px;
+  border: 1px solid #d0d7de;
+  object-fit: cover;
+}
+
+.server-icon-preview .icon-placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #6c757d;
+  background: #f5f5f5;
+  font-size: 0.85rem;
+}
+
+.server-icon-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.server-icon-form input[type="file"] {
+  width: 100%;
+}
+
+.server-icon-card .icon-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.icon-status {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.icon-status.status-success {
+  background: #e6f4ea;
+  color: #1e8e3e;
+}
+
+.icon-status.status-error {
+  background: #fdecea;
+  color: #c5221f;
+}

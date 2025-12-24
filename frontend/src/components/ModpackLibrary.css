@@ -1,0 +1,74 @@
+.modpack-library-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modpack-library-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modpack-library-list {
+  max-height: 200px;
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.modpack-library-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modpack-library-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 0.25rem;
+}
+
+.modpack-library-list li:last-child {
+  border-bottom: none;
+}
+
+.modpack-library-empty {
+  text-align: center;
+  color: #6c757d;
+  padding: 1rem;
+}
+
+.modpack-upload-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.modpack-library-status {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.modpack-library-status.status-success {
+  background: #e6f4ea;
+  color: #1e8e3e;
+}
+
+.modpack-library-status.status-error {
+  background: #fdecea;
+  color: #c5221f;
+}

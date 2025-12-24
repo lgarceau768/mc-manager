@@ -1,9 +1,18 @@
 import express from 'express';
+import os from 'os';
+import multer from 'multer';
 import serverService from '../../services/serverService.js';
-import { validate, createServerSchema } from '../../utils/validation.js';
+import { validate, createServerSchema, updateServerSettingsSchema } from '../../utils/validation.js';
 import logger from '../../utils/logger.js';
+import { ValidationError } from '../../utils/errors.js';
 
 const router = express.Router();
+const upload = multer({
+  dest: os.tmpdir(),
+  limits: {
+    fileSize: 1024 * 1024 * 512 // 512MB
+  }
+});
 
 /**
  * POST /api/servers
@@ -11,13 +20,15 @@ const router = express.Router();
  */
 router.post('/', validate(createServerSchema), async (req, res, next) => {
   try {
-    const { name, version, memory, cpuLimit } = req.body;
+    const { name, version, memory, cpuLimit, type, modpack } = req.body;
 
     const server = await serverService.createServer({
       name,
       version,
       memory,
-      cpuLimit
+      cpuLimit,
+      type,
+      modpack
     });
 
     logger.info(`Server created via API: ${server.id}`);
@@ -129,6 +140,122 @@ router.get('/:id/logs', async (req, res, next) => {
 
     const logs = await serverService.getServerLogs(id, tail);
     res.json({ logs });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/servers/:id/mods/upload
+ * Upload a mod/plugin jar or import a server pack zip
+ */
+router.post('/:id/mods/upload', upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      throw new ValidationError('A file is required');
+    }
+
+    const { id } = req.params;
+    const result = await serverService.uploadModOrPack(id, req.file);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PATCH /api/servers/:id/settings
+ * Update server.properties values
+ */
+router.patch('/:id/settings', validate(updateServerSettingsSchema), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const server = await serverService.updateServerSettings(id, req.body);
+    res.json(server);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/servers/:id/icon
+ * Upload server icon
+ */
+router.post('/:id/icon', upload.single('icon'), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      throw new ValidationError('Icon file is required');
+    }
+
+    const { id } = req.params;
+    const result = await serverService.updateServerIcon(id, req.file);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/servers/:id/icon
+ * Download server icon
+ */
+router.get('/:id/icon', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const iconPath = serverService.getServerIconPath(id);
+    if (!iconPath) {
+      return res.status(404).send('Icon not found');
+    }
+    return res.sendFile(iconPath);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/servers/:id/files
+ * List files in server volume
+ */
+router.get('/:id/files', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { path: targetPath = '' } = req.query;
+    const result = await serverService.listServerFiles(id, targetPath);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/servers/:id/files/download
+ * Download a file from the server volume
+ */
+router.get('/:id/files/download', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { path: targetPath = '' } = req.query;
+    const file = serverService.getFileDownloadPath(id, targetPath);
+    res.download(file.absolutePath, file.filename);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/servers/:id/files/upload
+ * Upload arbitrary file to a directory
+ */
+router.post('/:id/files/upload', upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      throw new ValidationError('A file is required');
+    }
+
+    const { id } = req.params;
+    const { path: targetPath = '' } = req.body;
+    const result = await serverService.uploadServerFile(id, targetPath, req.file);
+    res.json(result);
   } catch (error) {
     next(error);
   }

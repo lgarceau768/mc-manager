@@ -16,6 +16,12 @@
   border-bottom: 1px solid #3e3e3e;
 }
 
+.console-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .console-header h3 {
   color: #e0e0e0;
   font-size: 1rem;
@@ -38,6 +44,11 @@
 .status-disconnected {
   background-color: #dc3545;
   color: white;
+}
+
+.status-connecting {
+  background-color: #ffc107;
+  color: #1e1e1e;
 }
 
 .console-logs {

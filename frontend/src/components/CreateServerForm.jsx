@@ -1,19 +1,49 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { serverApi } from '../services/api';
+import { SERVER_TYPE_OPTIONS } from '../utils/serverTypes';
 import './CreateServerForm.css';
 
 function CreateServerForm({ onClose, onCreate }) {
   const [formData, setFormData] = useState({
     name: '',
+    type: 'PAPER',
     version: '1.20.4',
     memory: '4G',
-    cpuLimit: 2.0
+    cpuLimit: 2.0,
+    modpack: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [modpackOptions, setModpackOptions] = useState([]);
+  const [modpackLoading, setModpackLoading] = useState(false);
+
+  const fetchModpacks = useCallback(async (type) => {
+    try {
+      setModpackLoading(true);
+      const packs = await serverApi.listSavedModpacks(type);
+      setModpackOptions(packs || []);
+    } catch (err) {
+      console.error('Failed to load modpacks', err);
+      setModpackOptions([]);
+    } finally {
+      setModpackLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchModpacks(formData.type);
+  }, [formData.type, fetchModpacks]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'type') {
+      setFormData((prev) => ({
+        ...prev,
+        type: value,
+        modpack: ''
+      }));
+      return;
+    }
     setFormData((prev) => ({
       ...prev,
       [name]: value
@@ -26,7 +56,11 @@ function CreateServerForm({ onClose, onCreate }) {
     setLoading(true);
 
     try {
-      const newServer = await serverApi.createServer(formData);
+      const payload = {
+        ...formData,
+        modpack: formData.modpack || undefined
+      };
+      const newServer = await serverApi.createServer(payload);
       onCreate(newServer);
     } catch (err) {
       setError(err.message);
@@ -52,12 +86,59 @@ function CreateServerForm({ onClose, onCreate }) {
               value={formData.name}
               onChange={handleChange}
               required
-              pattern="[a-zA-Z0-9-]+"
+              pattern="(?:[a-zA-Z0-9]|-)+"
               minLength={3}
               maxLength={32}
               placeholder="my-minecraft-server"
             />
             <small>Alphanumeric characters and hyphens only (3-32 chars)</small>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="type">Server Type *</label>
+            <select
+              id="type"
+              name="type"
+              value={formData.type}
+              onChange={handleChange}
+              required
+            >
+              {SERVER_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <small>Choose the mod loader/platform to install</small>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="modpack">Saved Modpack</label>
+            <div className="modpack-select-row">
+              <select
+                id="modpack"
+                name="modpack"
+                value={formData.modpack}
+                onChange={handleChange}
+                disabled={modpackLoading || modpackOptions.length === 0}
+              >
+                <option value="">None</option>
+                {modpackOptions.map((pack) => (
+                  <option key={pack.filename} value={pack.filename}>
+                    {pack.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => fetchModpacks(formData.type)}
+                disabled={modpackLoading}
+              >
+                ↻
+              </button>
+            </div>
+            <small>Select a saved modpack for this server type (optional)</small>
           </div>
 
           <div className="form-group">
@@ -71,7 +152,7 @@ function CreateServerForm({ onClose, onCreate }) {
               required
               placeholder="1.20.4"
             />
-            <small>Paper server version (e.g., 1.20.4, latest)</small>
+            <small>Game version for the selected loader (e.g., 1.20.4, latest)</small>
           </div>
 
           <div className="form-group">

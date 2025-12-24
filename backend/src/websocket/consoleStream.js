@@ -95,12 +95,18 @@ class ConsoleStreamManager {
       }
 
       // Handle messages from client (future: commands)
-      ws.on('message', (data) => {
+      ws.on('message', async (data) => {
         try {
           const message = JSON.parse(data.toString());
-          this.handleClientMessage(ws, serverId, message);
+          await this.handleClientMessage(ws, serverId, message);
         } catch (error) {
-          logger.error(`Failed to parse WebSocket message: ${error.message}`);
+          logger.error(`Failed to handle WebSocket message: ${error.message}`);
+          if (ws.readyState === ws.OPEN) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Failed to handle console message'
+            }));
+          }
         }
       });
 
@@ -142,22 +148,75 @@ class ConsoleStreamManager {
   /**
    * Handle messages from client
    */
-  handleClientMessage(ws, serverId, message) {
+  async handleClientMessage(ws, serverId, message) {
     switch (message.type) {
       case 'ping':
         ws.send(JSON.stringify({ type: 'pong' }));
         break;
 
       case 'command':
-        // Future implementation: execute commands via RCON
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: 'Command execution not yet implemented'
-        }));
+        await this.executeCommand(ws, serverId, message.command);
         break;
 
       default:
         logger.warn(`Unknown message type: ${message.type}`);
+    }
+  }
+
+  /**
+   * Execute a console command via Docker exec (rcon-cli)
+   */
+  async executeCommand(ws, serverId, command) {
+    if (!command || typeof command !== 'string' || !command.trim()) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Command is required'
+      }));
+      return;
+    }
+
+    const server = Server.findById(serverId);
+    if (!server) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Server not found'
+      }));
+      return;
+    }
+
+    if (server.status !== 'running' || !server.container_id) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Server must be running to execute commands'
+      }));
+      return;
+    }
+
+    try {
+      const output = await dockerService.execInContainer(server.container_id, ['rcon-cli', command]);
+      const timestamp = new Date().toISOString();
+
+      ws.send(JSON.stringify({
+        type: 'command_result',
+        success: true,
+        command,
+        output,
+        timestamp
+      }));
+
+      if (output) {
+        this.broadcastToServer(serverId, {
+          type: 'log',
+          timestamp,
+          message: `[RCON] ${output}`
+        });
+      }
+    } catch (error) {
+      logger.error(`Failed to execute command for server ${serverId}: ${error.message}`);
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: `Failed to execute command: ${error.message}`
+      }));
     }
   }
 

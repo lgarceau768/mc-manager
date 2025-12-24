@@ -23,6 +23,8 @@ frontend/build/
 logs/
 *.log
 
+modpacks/
+
 # IDE
 .vscode/
 .idea/

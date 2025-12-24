@@ -10,6 +10,7 @@ function ServerList() {
   const [error, setError] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const fetchServers = async () => {
     try {
@@ -21,6 +22,7 @@ function ServerList() {
       setError(err.message);
     } finally {
       setLoading(false);
+      setHasLoadedOnce(true);
     }
   };
 
@@ -58,7 +60,7 @@ function ServerList() {
     stopped: servers.filter((s) => s.status === 'stopped').length
   };
 
-  if (loading && servers.length === 0) {
+  if (!hasLoadedOnce && loading) {
     return <div className="loading">Loading servers...</div>;
   }
 

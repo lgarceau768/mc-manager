@@ -2,7 +2,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ServerStatus from '../components/ServerStatus';
 import ServerConsole from '../components/ServerConsole';
+import ModUploader from '../components/ModUploader';
+import ServerSettingsForm from '../components/ServerSettingsForm';
+import ServerIconUploader from '../components/ServerIconUploader';
+import FileExplorer from '../components/FileExplorer';
+import ModpackLibrary from '../components/ModpackLibrary';
 import { serverApi } from '../services/api';
+import { formatServerType, getServerAddress } from '../utils/serverTypes';
 import './ServerDetails.css';
 
 function ServerDetails() {
@@ -162,7 +168,7 @@ function ServerDetails() {
             </div>
             <div className="info-item">
               <span className="info-label">Type:</span>
-              <span className="info-value">{server.type}</span>
+              <span className="info-value">{formatServerType(server.type)}</span>
             </div>
             <div className="info-item">
               <span className="info-label">Version:</span>
@@ -176,6 +182,12 @@ function ServerDetails() {
               <span className="info-label">Memory:</span>
               <span className="info-value">{server.memory}</span>
             </div>
+            {server.connectionInfo && (
+              <div className="info-item">
+                <span className="info-label">Server Address:</span>
+                <span className="info-value">{getServerAddress(server)}</span>
+              </div>
+            )}
             {server.cpu_limit && (
               <div className="info-item">
                 <span className="info-label">CPU Limit:</span>
@@ -186,6 +198,32 @@ function ServerDetails() {
         </div>
 
         <ServerStatus serverId={id} />
+      </div>
+
+      <div className="server-settings-grid">
+        <ServerSettingsForm
+          serverId={id}
+          initialSettings={server.settings}
+          onUpdated={(updated) =>
+            setServer((prev) => ({
+              ...prev,
+              ...updated,
+              stats: updated?.stats ?? prev?.stats
+            }))
+          }
+        />
+        <div className="server-config-side">
+          <ServerIconUploader serverId={id} />
+          <ModUploader serverId={id} serverType={server.type} />
+        </div>
+      </div>
+
+      <div className="file-explorer-section">
+        <FileExplorer serverId={id} />
+      </div>
+
+      <div className="modpack-library-section">
+        <ModpackLibrary initialType={server.type} />
       </div>
 
       <div className="console-section">

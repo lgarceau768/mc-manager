@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { serverApi } from '../services/api';
+import { formatServerType, getServerAddress } from '../utils/serverTypes';
 import './ServerCard.css';
 
 function ServerCard({ server, onUpdate, onDelete }) {
@@ -70,7 +71,7 @@ function ServerCard({ server, onUpdate, onDelete }) {
       <div className="server-card-info">
         <div className="info-row">
           <span className="label">Type:</span>
-          <span className="value">{server.type}</span>
+          <span className="value">{formatServerType(server.type)}</span>
         </div>
         <div className="info-row">
           <span className="label">Version:</span>
@@ -80,6 +81,12 @@ function ServerCard({ server, onUpdate, onDelete }) {
           <span className="label">Port:</span>
           <span className="value">{server.port}</span>
         </div>
+        {server.connectionInfo?.address && (
+          <div className="info-row">
+            <span className="label">Address:</span>
+            <span className="value">{getServerAddress(server)}</span>
+          </div>
+        )}
         <div className="info-row">
           <span className="label">Memory:</span>
           <span className="value">{server.memory}</span>

@@ -49,6 +49,15 @@ export const createServerSchema = Joi.object({
       'any.invalid': 'Memory must be between 512M and 16G'
     }),
 
+  type: Joi.string()
+    .valid('PAPER', 'FABRIC', 'FORGE')
+    .insensitive()
+    .uppercase()
+    .default('PAPER')
+    .messages({
+      'any.only': 'Server type must be one of Paper, Fabric, or Forge'
+    }),
+
   cpuLimit: Joi.number()
     .min(0.5)
     .max(8.0)
@@ -57,7 +66,24 @@ export const createServerSchema = Joi.object({
       'number.min': 'CPU limit must be at least 0.5',
       'number.max': 'CPU limit must not exceed 8.0'
     })
+,
+
+  modpack: Joi.string().optional()
 });
+
+export const updateServerSettingsSchema = Joi.object({
+  motd: Joi.string().max(100).allow('').optional(),
+  maxPlayers: Joi.number().integer().min(1).max(500).optional(),
+  difficulty: Joi.string()
+    .valid('peaceful', 'easy', 'normal', 'hard')
+    .insensitive()
+    .optional(),
+  pvp: Joi.boolean().optional(),
+  whitelist: Joi.boolean().optional(),
+  allowNether: Joi.boolean().optional(),
+  hardcore: Joi.boolean().optional(),
+  viewDistance: Joi.number().integer().min(2).max(32).optional()
+}).min(1);
 
 /**
  * Validation middleware factory

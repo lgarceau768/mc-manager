@@ -11,7 +11,9 @@ services:
       - PORT=3001
       - DATABASE_PATH=/app/data/database/servers.db
       - SERVERS_DATA_PATH=/app/data/servers
+      - SERVERS_DATA_PATH_HOST=${PWD}/data/servers
       - DOCKER_SOCKET=/var/run/docker.sock
+      - PUBLIC_SERVER_HOST=host.docker.internal
       - PORT_RANGE_START=25565
       - PORT_RANGE_END=25600
       - LOG_LEVEL=info

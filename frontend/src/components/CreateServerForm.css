@@ -80,6 +80,15 @@
   font-size: 0.875rem;
 }
 
+.modpack-select-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.modpack-select-row select {
+  flex: 1;
+}
+
 .form-error {
   background-color: #f8d7da;
   color: #721c24;
