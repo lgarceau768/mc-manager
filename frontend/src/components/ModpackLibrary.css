@@ -37,11 +37,56 @@
   align-items: center;
   font-size: 0.9rem;
   border-bottom: 1px solid #f0f0f0;
-  padding-bottom: 0.25rem;
+  padding: 0.5rem 0;
+  gap: 1rem;
 }
 
 .modpack-library-list li:last-child {
   border-bottom: none;
+}
+
+.modpack-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.modpack-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.modpack-filename {
+  font-size: 0.85rem;
+  color: #666;
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+.btn-apply {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.btn-apply:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.btn-apply:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
 }
 
 .modpack-library-empty {

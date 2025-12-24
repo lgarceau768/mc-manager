@@ -16,32 +16,10 @@ const upload = multer({
   }
 });
 
-router.get('/:type', async (req, res, next) => {
-  try {
-    const { type } = req.params;
-    const modpacks = serverService.listSavedModpacks(type);
-    res.json(modpacks);
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.post('/:type', upload.single('file'), async (req, res, next) => {
-  try {
-    if (!req.file) {
-      throw new ValidationError('Modpack file is required');
-    }
-    const { type } = req.params;
-    const saved = serverService.saveModpackFile(type, req.file);
-    res.status(201).json(saved);
-  } catch (error) {
-    next(error);
-  } finally {
-    if (req.file?.path) {
-      fs.unlink(req.file.path, () => {});
-    }
-  }
-});
+/**
+ * IMPORTANT: Specific routes must come BEFORE parameterized routes
+ * Otherwise /:type will match /import and /imported
+ */
 
 /**
  * Import modpack from URL (CurseForge, Modrinth, or direct)
@@ -79,5 +57,40 @@ router.get('/imported/:type', asyncHandler(async (req, res) => {
     modpacks
   });
 }));
+
+/**
+ * Get saved modpacks for a type
+ * GET /api/modpacks/:type
+ */
+router.get('/:type', async (req, res, next) => {
+  try {
+    const { type } = req.params;
+    const modpacks = serverService.listSavedModpacks(type);
+    res.json(modpacks);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Upload modpack file
+ * POST /api/modpacks/:type
+ */
+router.post('/:type', upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      throw new ValidationError('Modpack file is required');
+    }
+    const { type } = req.params;
+    const saved = serverService.saveModpackFile(type, req.file);
+    res.status(201).json(saved);
+  } catch (error) {
+    next(error);
+  } finally {
+    if (req.file?.path) {
+      fs.unlink(req.file.path, () => {});
+    }
+  }
+});
 
 export default router;

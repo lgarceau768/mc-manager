@@ -15,6 +15,9 @@ data/database/*.db-shm
 data/database/*.db-wal
 data/servers/*/
 data/backups/*/
+data/modpacks/*/
+
+backend/data/*/
 
 # Build outputs
 frontend/dist/

@@ -275,6 +275,14 @@ export const serverApi = {
   },
 
   /**
+   * Apply a saved modpack to an existing server
+   */
+  applyModpackToServer: async (serverId, modpackFilename) => {
+    const response = await api.post(`/servers/${serverId}/apply-modpack`, { modpackFilename });
+    return response.data;
+  },
+
+  /**
    * Create a backup for a server
    */
   createBackup: async (id, description = '') => {

@@ -261,4 +261,26 @@ router.post('/:id/files/upload', upload.single('file'), async (req, res, next) =
   }
 });
 
+/**
+ * POST /api/servers/:id/apply-modpack
+ * Apply a saved modpack to an existing server
+ */
+router.post('/:id/apply-modpack', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { modpackFilename } = req.body;
+
+    if (!modpackFilename) {
+      throw new ValidationError('modpackFilename is required');
+    }
+
+    const result = await serverService.applyModpackToServer(id, modpackFilename);
+
+    logger.info(`Modpack applied to server via API: ${id}`);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

@@ -1,7 +1,8 @@
 export const SERVER_TYPE_OPTIONS = [
   { value: 'PAPER', label: 'Paper (plugins)' },
   { value: 'FABRIC', label: 'Fabric (mods)' },
-  { value: 'FORGE', label: 'Forge (mods)' }
+  { value: 'FORGE', label: 'Forge (mods)' },
+  { value: 'NEOFORGE', label: 'NeoForge (mods)' }
 ];
 
 export const formatServerType = (type) => {
@@ -12,6 +13,8 @@ export const formatServerType = (type) => {
       return 'Fabric';
     case 'FORGE':
       return 'Forge';
+    case 'NEOFORGE':
+      return 'NeoForge';
     default:
       return type || 'Unknown';
   }

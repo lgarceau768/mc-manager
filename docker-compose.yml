@@ -12,6 +12,8 @@ services:
       - DATABASE_PATH=/app/data/database/servers.db
       - SERVERS_DATA_PATH=/app/data/servers
       - SERVERS_DATA_PATH_HOST=${PWD}/data/servers
+      - MODPACKS_PATH=/app/data/modpacks
+      - BACKUPS_PATH=/app/data/backups
       - DOCKER_SOCKET=/var/run/docker.sock
       - PUBLIC_SERVER_HOST=host.docker.internal
       - PORT_RANGE_START=25565
@@ -20,10 +22,12 @@ services:
     volumes:
       # Mount Docker socket to manage containers
       - /var/run/docker.sock:/var/run/docker.sock
-      # Persist database and server data
+      # Persist all data (database, servers, modpacks, backups)
       - ./data:/app/data
       # Persist logs
       - ./logs:/app/logs
+      # Temp directory for downloads
+      - ./temp:/app/temp
     networks:
       - mc-manager-network
     healthcheck:

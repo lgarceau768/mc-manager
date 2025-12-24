@@ -50,12 +50,12 @@ export const createServerSchema = Joi.object({
     }),
 
   type: Joi.string()
-    .valid('PAPER', 'FABRIC', 'FORGE')
+    .valid('PAPER', 'FABRIC', 'FORGE', 'NEOFORGE')
     .insensitive()
     .uppercase()
     .default('PAPER')
     .messages({
-      'any.only': 'Server type must be one of Paper, Fabric, or Forge'
+      'any.only': 'Server type must be one of Paper, Fabric, Forge, or NeoForge'
     }),
 
   cpuLimit: Joi.number()

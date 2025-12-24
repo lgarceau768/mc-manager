@@ -4,11 +4,12 @@ import { SERVER_TYPE_OPTIONS } from '../utils/serverTypes';
 import ModpackImporter from './ModpackImporter';
 import './ModpackLibrary.css';
 
-function ModpackLibrary({ initialType = 'PAPER' }) {
+function ModpackLibrary({ initialType = 'PAPER', serverId = null, serverStatus = null }) {
   const [selectedType, setSelectedType] = useState(initialType);
   const [modpacks, setModpacks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [applying, setApplying] = useState(null);
   const [status, setStatus] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
 
@@ -60,6 +61,29 @@ function ModpackLibrary({ initialType = 'PAPER' }) {
     setModpacks(data || []);
   };
 
+  const handleApplyModpack = async (modpackFilename) => {
+    if (!serverId) {
+      setStatus({ type: 'error', message: 'No server selected' });
+      return;
+    }
+
+    if (serverStatus === 'running') {
+      setStatus({ type: 'error', message: 'Server must be stopped before applying a modpack' });
+      return;
+    }
+
+    try {
+      setApplying(modpackFilename);
+      setStatus(null);
+      await serverApi.applyModpackToServer(serverId, modpackFilename);
+      setStatus({ type: 'success', message: `Modpack "${modpackFilename}" applied successfully` });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+    } finally {
+      setApplying(null);
+    }
+  };
+
   return (
     <div className="modpack-library-card">
       <div className="modpack-library-header">
@@ -97,8 +121,20 @@ function ModpackLibrary({ initialType = 'PAPER' }) {
           <ul>
             {modpacks.map((pack) => (
               <li key={pack.filename}>
-                <span>{pack.name}</span>
-                <code>{pack.filename}</code>
+                <div className="modpack-info">
+                  <span className="modpack-name">{pack.name}</span>
+                  <code className="modpack-filename">{pack.filename}</code>
+                </div>
+                {serverId && (
+                  <button
+                    className="btn btn-sm btn-apply"
+                    onClick={() => handleApplyModpack(pack.filename)}
+                    disabled={applying === pack.filename || serverStatus === 'running'}
+                    title={serverStatus === 'running' ? 'Stop the server first' : 'Apply this modpack to the server'}
+                  >
+                    {applying === pack.filename ? 'Applying...' : 'Apply'}
+                  </button>
+                )}
               </li>
             ))}
           </ul>

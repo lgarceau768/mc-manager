@@ -1,3 +1,5 @@
+import axios from 'axios';
+import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
@@ -20,7 +22,7 @@ class ServerService {
     this.serversDataPath = process.env.SERVERS_DATA_PATH || path.join(__dirname, '../../data/servers');
     this.modpacksBasePath = process.env.MODPACKS_PATH || path.join(__dirname, '../../modpacks');
     this.serversDataHostPath = process.env.SERVERS_DATA_PATH_HOST || this.serversDataPath;
-    this.serverTypes = ['PAPER', 'FABRIC', 'FORGE'];
+    this.serverTypes = ['PAPER', 'FABRIC', 'FORGE', 'NEOFORGE'];
 
     // Ensure servers data directory exists
     if (!fs.existsSync(this.serversDataPath)) {
@@ -71,7 +73,7 @@ class ServerService {
       this.ensureEulaAccepted(volumePath);
 
       if (modpack) {
-        this.installSavedModpack(serverType, modpack, volumePath);
+        await this.installSavedModpack(serverType, modpack, volumePath);
       }
 
       // Create Docker container
@@ -380,7 +382,7 @@ class ServerService {
 
     try {
       if (extension === '.zip') {
-        const details = this.installPackArchive(file.path, volumePath);
+        const details = await this.installPackArchive(file.path, volumePath);
         logger.info(`Installed server pack for ${serverId}`);
         return {
           type: 'pack',
@@ -819,17 +821,50 @@ class ServerService {
     return fullPath;
   }
 
-  installSavedModpack(type, filename, volumePath) {
+  async installSavedModpack(type, filename, volumePath) {
     const zipPath = this.getSavedModpackZip(type, filename);
     return this.installPackArchive(zipPath, volumePath);
   }
 
-  installPackArchive(zipPath, volumePath) {
+  async applyModpackToServer(serverId, modpackFilename) {
+    const server = Server.findById(serverId);
+    if (!server) {
+      throw new NotFoundError(`Server not found: ${serverId}`);
+    }
+
+    // Server should be stopped for modpack installation
+    if (server.status === 'running') {
+      throw new ValidationError('Server must be stopped before applying a modpack');
+    }
+
+    logger.info(`Applying modpack ${modpackFilename} to server ${serverId}`);
+
+    try {
+      // Install the modpack to the server's volume
+      const result = await this.installSavedModpack(server.type, modpackFilename, server.volume_path);
+
+      logger.info(`Successfully applied modpack ${modpackFilename} to server ${serverId}`);
+
+      return {
+        message: 'Modpack applied successfully',
+        modpack: modpackFilename,
+        ...result
+      };
+    } catch (error) {
+      logger.error(`Failed to apply modpack ${modpackFilename} to server ${serverId}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async installPackArchive(zipPath, volumePath) {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mc-pack-'));
     try {
+      logger.info(`Extracting modpack from ${zipPath} to ${tempDir}`);
       const zip = new AdmZip(zipPath);
       zip.extractAllTo(tempDir, true);
       const packRoot = this.detectPackRoot(tempDir);
+      logger.info(`Detected pack root: ${packRoot}`);
+      logger.info(`Installing to volume path: ${volumePath}`);
       return this.installPackFromDirectory(packRoot, volumePath);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
@@ -847,7 +882,32 @@ class ServerService {
     return extractedDir;
   }
 
-  installPackFromDirectory(packRoot, volumePath) {
+  async installPackFromDirectory(packRoot, volumePath) {
+    const summary = [];
+    logger.info(`Scanning pack root for directories: ${packRoot}`);
+    const availableDirs = fs.readdirSync(packRoot);
+    logger.info(`Available items in pack root: ${availableDirs.join(', ')}`);
+
+    summary.push(...this.copyPackContents(packRoot, volumePath, 'pack'));
+
+    const overridesDir = path.join(packRoot, 'overrides');
+    if (fs.existsSync(overridesDir) && fs.statSync(overridesDir).isDirectory()) {
+      logger.info(`Detected overrides directory at ${overridesDir}`);
+      summary.push(...this.copyPackContents(overridesDir, volumePath, 'overrides'));
+    }
+
+    const modrinthIndexPath = path.join(packRoot, 'modrinth.index.json');
+    const modrinthIndex = this.safeReadJson(modrinthIndexPath);
+    if (modrinthIndex) {
+      logger.info('Installing files referenced in modrinth.index.json');
+      summary.push(...await this.installModrinthFiles(modrinthIndex, volumePath));
+    }
+
+    logger.info(`Installation summary: ${summary.join(', ')}`);
+    return summary;
+  }
+
+  copyPackContents(sourceRoot, volumePath, sourceLabel = 'pack') {
     const summary = [];
     const directories = [
       'config',
@@ -858,32 +918,150 @@ class ServerService {
       'scripts',
       'defaultconfigs',
       'resources',
+      'resourcepacks',
+      'datapacks',
       'shaderpacks'
     ];
 
     directories.forEach((dirName) => {
-      const source = path.join(packRoot, dirName);
+      const source = path.join(sourceRoot, dirName);
       if (fs.existsSync(source) && fs.statSync(source).isDirectory()) {
         const destination = path.join(volumePath, dirName);
+        const fileCount = fs.readdirSync(source).length;
+        logger.info(`Copying ${sourceLabel}:${dirName}/ (${fileCount} items) from ${source} to ${destination}`);
         fs.rmSync(destination, { recursive: true, force: true });
         fs.mkdirSync(path.dirname(destination), { recursive: true });
         fs.cpSync(source, destination, { recursive: true });
-        summary.push(`Copied ${dirName}/`);
+        summary.push(`Copied ${sourceLabel}:${dirName}/ (${fileCount} items)`);
+      } else {
+        logger.debug(`Directory ${dirName}/ not found in ${sourceLabel}`);
       }
     });
 
-    const rootEntries = fs.readdirSync(packRoot);
+    const rootEntries = fs.readdirSync(sourceRoot);
     rootEntries.forEach((name) => {
-      const source = path.join(packRoot, name);
+      if (name === 'overrides') return;
+      const source = path.join(sourceRoot, name);
       const stat = fs.statSync(source);
       if (stat.isFile()) {
         const destination = path.join(volumePath, name);
+        logger.info(`Copying ${sourceLabel} root file ${name} to ${destination}`);
         fs.copyFileSync(source, destination);
-        summary.push(`Placed ${name}`);
+        summary.push(`Placed ${sourceLabel}:${name}`);
       }
     });
 
     return summary;
+  }
+
+  safeReadJson(filePath) {
+    try {
+      if (!fs.existsSync(filePath)) {
+        return null;
+      }
+      const contents = fs.readFileSync(filePath, 'utf8');
+      return JSON.parse(contents);
+    } catch (error) {
+      logger.warn(`Failed to parse JSON file at ${filePath}: ${error.message}`);
+      return null;
+    }
+  }
+
+  async installModrinthFiles(indexData, volumePath) {
+    if (!indexData || !Array.isArray(indexData.files)) {
+      logger.warn('Modrinth index found but no files array present, skipping downloads');
+      return [];
+    }
+
+    const summary = [];
+    for (const fileEntry of indexData.files) {
+      const relativePath = fileEntry.path;
+      if (!relativePath) {
+        logger.warn('Encountered Modrinth file entry without a path, skipping');
+        continue;
+      }
+
+      const serverEnv = fileEntry.env?.server || 'required';
+      if (serverEnv === 'unsupported') {
+        logger.info(`Skipping ${relativePath} because it is unsupported on servers`);
+        continue;
+      }
+      if (serverEnv === 'optional' && fileEntry.option?.default === false) {
+        logger.info(`Skipping optional ${relativePath} because it is disabled by default`);
+        continue;
+      }
+
+      const downloads = Array.isArray(fileEntry.downloads) ? fileEntry.downloads : [];
+      if (downloads.length === 0) {
+        logger.warn(`No download URLs provided for ${relativePath}, skipping`);
+        continue;
+      }
+
+      const destination = this.resolveServerPath(volumePath, relativePath);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+
+      await this.downloadFileWithFallback(downloads, destination);
+      this.verifyFileHash(destination, fileEntry.hashes, relativePath);
+
+      summary.push(`Downloaded ${relativePath}`);
+    }
+
+    return summary;
+  }
+
+  async downloadFileWithFallback(urls, destination) {
+    let lastError = null;
+    for (const url of urls) {
+      try {
+        logger.info(`Downloading ${url} to ${destination}`);
+        const response = await axios({
+          method: 'GET',
+          url,
+          responseType: 'stream',
+          timeout: 300000,
+          headers: {
+            'User-Agent': 'Minecraft-Server-Manager/1.0'
+          }
+        });
+
+        await new Promise((resolve, reject) => {
+          const writer = fs.createWriteStream(destination);
+          response.data.pipe(writer);
+          writer.on('finish', resolve);
+          writer.on('error', reject);
+        });
+        return;
+      } catch (error) {
+        lastError = error;
+        logger.warn(`Failed to download ${url}: ${error.message}`);
+        fs.rmSync(destination, { force: true });
+      }
+    }
+
+    throw new Error(`Failed to download file after ${urls.length} attempts: ${lastError?.message || 'unknown error'}`);
+  }
+
+  verifyFileHash(filePath, expectedHashes = {}, relativePath) {
+    if (!expectedHashes || typeof expectedHashes !== 'object') {
+      return;
+    }
+
+    const supportedAlgorithms = ['sha512', 'sha256', 'sha1', 'md5'];
+    for (const algorithm of supportedAlgorithms) {
+      if (expectedHashes[algorithm]) {
+        const actualHash = crypto
+          .createHash(algorithm)
+          .update(fs.readFileSync(filePath))
+          .digest('hex');
+        if (actualHash.toLowerCase() !== expectedHashes[algorithm].toLowerCase()) {
+          throw new ValidationError(`Checksum mismatch for ${relativePath} (${algorithm})`);
+        }
+        logger.debug(`Verified ${relativePath} using ${algorithm}`);
+        return;
+      }
+    }
+
+    logger.warn(`No supported hashes provided for ${relativePath}, skipping verification`);
   }
 }
 

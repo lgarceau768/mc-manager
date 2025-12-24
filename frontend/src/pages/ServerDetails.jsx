@@ -224,7 +224,7 @@ function ServerDetails() {
       </div>
 
       <div className="modpack-library-section">
-        <ModpackLibrary initialType={server.type} />
+        <ModpackLibrary initialType={server.type} serverId={id} serverStatus={server.status} />
       </div>
 
       <div className="backups-section">
