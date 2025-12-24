@@ -2,6 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
+import path from 'path';
+import fs from 'fs';
 import logger from './utils/logger.js';
 import apiRouter from './api/index.js';
 import consoleStream from './websocket/consoleStream.js';
@@ -18,6 +20,37 @@ app.use(express.urlencoded({ extended: true }));
 
 // Mount API routes
 app.use('/api', apiRouter);
+
+/**
+ * If a built frontend exists, serve it from this process so that a single
+ * Docker image can expose both the API and UI.
+ */
+const attachFrontendBundle = () => {
+  const distPath = process.env.FRONTEND_DIST_PATH;
+  if (!distPath) {
+    return;
+  }
+
+  const resolvedPath = path.resolve(distPath);
+  if (!fs.existsSync(resolvedPath)) {
+    logger.warn(`FRONTEND_DIST_PATH set to ${resolvedPath}, but directory was not found`);
+    return;
+  }
+
+  logger.info(`Serving frontend assets from ${resolvedPath}`);
+  app.use(express.static(resolvedPath));
+
+  app.get('*', (req, res, next) => {
+    // Let API and WebSocket routes fall through to their handlers
+    if (req.path.startsWith('/api') || req.path.startsWith('/ws')) {
+      return next();
+    }
+
+    res.sendFile(path.join(resolvedPath, 'index.html'));
+  });
+};
+
+attachFrontendBundle();
 
 // Root endpoint
 app.get('/', (req, res) => {

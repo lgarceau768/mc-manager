@@ -90,6 +90,35 @@ The easiest way to run the application is using Docker Compose:
 docker-compose up -d --build
 ```
 
+### Option 1b: Build a Single Docker Image
+
+For publishing a self-contained image (UI + API) you can use the build tooling under `build/`:
+
+1. Copy the environment template and adjust values for your host:
+   ```bash
+   cp build/.env.example build/.env
+   # edit build/.env (at minimum set SERVERS_DATA_PATH_HOST to your real host path)
+   ```
+
+2. Build the image (this runs the frontend build, installs backend dependencies, and bakes the defaults defined in `build/.env`):
+   ```bash
+   npm run build:image
+   # or ./build/build-image.sh
+   ```
+
+3. Run the resulting container (serves both UI and API on port 3001 by default):
+   ```bash
+   docker run -d \
+     --name mc-server-manager \
+     -p 8080:3001 \
+     -v /var/run/docker.sock:/var/run/docker.sock \
+     -v /opt/mc-manager/data:/data \
+     -e SERVERS_DATA_PATH_HOST=/opt/mc-manager/data/servers \
+     mc-server-manager:latest
+   ```
+
+The `/data` bind mount stores the SQLite database, Minecraft server data, and shared modpack library. `SERVERS_DATA_PATH_HOST` must be the real host path that Docker should mount into the Minecraft containers so they see the same world data directory.
+
 ### Option 2: Development Mode (Local)
 
 Run both backend and frontend locally without Docker:
@@ -221,6 +250,17 @@ PORT_RANGE_START=25565                 # First server port
 PORT_RANGE_END=25600                   # Last server port
 LOG_LEVEL=info                         # Logging level
 ```
+
+### Build Script Environment Variables
+
+The image build helper (`build/build-image.sh` or `npm run build:image`) reads `build/.env`. Copy `.env.example` and customize these values before building:
+
+- `IMAGE_NAME` / `IMAGE_TAG`: name of the resulting Docker image.
+- `NODE_VERSION`: base Node.js image tag (defaults to `20-alpine`).
+- `PORT`, `DATABASE_PATH`, `SERVERS_DATA_PATH`, `MODPACKS_PATH`: default in-container paths.
+- `SERVERS_DATA_PATH_HOST`: **host** path used when spawning Minecraft containers. This must match the path you bind into the manager container (for example `/opt/mc-manager/data/servers`).
+- `PUBLIC_SERVER_HOST`, `PORT_RANGE_START`, `PORT_RANGE_END`, `LOG_LEVEL`: runtime defaults that can still be overridden at `docker run` time with `-e`.
+- `FRONTEND_DIST_PATH`: where the backend should serve the bundled React app inside the container (`/app/frontend` by default).
 
 ### Port Management
 
@@ -354,6 +394,40 @@ npm run dev
 - Security hardening
 - Deployment guides
 - Docker Compose production setup
+
+## Implementation Plan for Upcoming Features
+
+To prepare the project for public release and broader modded-server workflows, the following roadmap items have detailed plans that can be implemented incrementally.
+
+### 1. Expanded Mod Loader Support (Forge & Fabric)
+- **Backend**: Extend the server creation flow to accept Forge and Fabric parameters (loader version, installer URL, optional modpack metadata). Update `dockerService` so the container env vars (e.g., `TYPE=FORGE`, `TYPE=FABRIC`) map to the itzg image capabilities, and ensure loader-specific files (installer, mods, config) are mounted in the per-server volume structure described in `modpacks/<loader>/`.
+- **Saved modpacks**: Normalize the `modpacks` directory to `modpacks/{paper,forge,fabric}/...` and update upload/list endpoints so the loader type determines the persistence path. Add validation that ensures the zip contains the expected layout (e.g., `mods/`, `config/`, optional `overrides/`).
+- **UI**: Update `CreateServerForm` to surface loader choice + loader-specific fields, surface loader metadata in cards/details, and allow selecting from saved modpacks filtered by loader.
+
+### 2. Individual Mod Management
+- **Backend**: Add endpoints for listing, uploading, enabling/disabling, and deleting mods per server (e.g., `/servers/:id/mods`). This is essentially a specialized wrapper around the file explorer but lets the UI understand mod/plug-in metadata (filename, enabled flag, last updated).
+- **UI**: Introduce a “Mods” tab in `ServerDetails` with drag-and-drop upload, status toggles, and delete actions. Reuse the ModUploader component but provide inline feedback (success/failure, modpack conflicts).
+- **Validation**: Optionally parse fabric/forge `.jar` manifest to show mod name/version; warn when a mod duplicates another version.
+
+### 3. Modern Minecraft-Themed UI Refresh
+- **Design direction**: Adopt a clean “technical” Minecraft aesthetic (dark slate palette, blocky accent colors, subtle gradients inspired by the launcher). Create a shared theme file (CSS variables or Tailwind config) to consolidate colors, fonts, and spacing.
+- **Components**: Refresh Server Cards, tabs, and dialogs with consistent spacing, iconography, and backgrounds (e.g., pixel grid textures, subtle noise overlays). Consider adding a hero header with key server stats and call-to-action buttons.
+- **Responsiveness**: Ensure the refreshed layout maintains accessibility (contrast ratios) and handles tablet/mobile breakpoints gracefully.
+
+### 4. Backup & Restore
+- **Backend**: Implement `/servers/:id/backups` endpoints to trigger zip/tarball creation of the server directory (world, configs, mods) and to list and download stored archives. Backups should live under `data/backups/<serverId>/timestamp.zip`. Provide a restore endpoint that stops the server, extracts the archive, and restarts it.
+- **Scheduling (optional)**: Introduce a lightweight cron/task runner to support automatic daily/weekly backups with retention settings stored per server.
+- **UI**: Add a Backup panel that lists available archives, includes “Create backup” and “Restore” buttons, and exposes download links.
+
+### 5. Login & Access Control
+- **Configuration**: Add env vars (`ENABLE_LOGIN`, `LOGIN_USERNAME`, `LOGIN_PASSWORD`, `JWT_SECRET`, etc.) that drive whether auth is required. Defaults can keep the app open for self-hosted development.
+- **Backend**: Introduce a minimal auth service that issues JWTs via a `/api/auth/login` route. Protect all API routes with middleware when auth is enabled. Tokens can be short-lived and stored in HttpOnly cookies.
+- **Frontend**: Build a single-page login form that is shown before the dashboard when `ENABLE_LOGIN` is true (check via `/api/health`). Store session info using context and intercept axios requests to attach cookies/headers.
+
+### 6. CurseForge Modpack Imports
+- **Backend**: Create a `/modpacks/import` endpoint that accepts a CurseForge project or direct zip URL. Use the CurseForge API (or simple HTTP download when the URL is already signed) to fetch the zip, validate it, and extract into the proper loader bucket under `modpacks/`.
+- **UI**: Extend the Modpack Library to include an “Import from CurseForge URL” form. Show progress and result status, then refresh the loader-specific modpack list.
+- **Server creation**: Allow the create-server form to accept a CurseForge URL directly so new servers can be bootstrapped from a remote pack in a single step.
 
 ## License
 

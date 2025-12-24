@@ -13,7 +13,8 @@
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
     "start:backend": "npm run start --workspace=backend",
-    "build:frontend": "npm run build --workspace=frontend"
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:image": "bash ./build/build-image.sh"
   },
   "keywords": [
     "minecraft",
