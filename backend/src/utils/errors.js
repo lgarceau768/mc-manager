@@ -38,6 +38,13 @@ export class DockerError extends Error {
 }
 
 /**
+ * Async handler wrapper for Express routes
+ */
+export const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+/**
  * Express error handler middleware
  */
 export const errorHandler = (err, req, res, next) => {

@@ -263,6 +263,19 @@ class DockerService {
   }
 
   /**
+   * Execute RCON command in Minecraft server container
+   */
+  async executeCommand(containerId, command) {
+    try {
+      logger.info(`Executing RCON command: ${command}`);
+      return await this.execInContainer(containerId, ['rcon-cli', command]);
+    } catch (error) {
+      logger.error(`Failed to execute RCON command: ${error.message}`);
+      throw new DockerError(`Failed to execute RCON command: ${error.message}`, error);
+    }
+  }
+
+  /**
    * Check if container is running
    */
   async isContainerRunning(containerId) {

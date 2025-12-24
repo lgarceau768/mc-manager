@@ -7,6 +7,7 @@ import fs from 'fs';
 import logger from './utils/logger.js';
 import apiRouter from './api/index.js';
 import consoleStream from './websocket/consoleStream.js';
+import schedulerService from './services/schedulerService.js';
 import db from './models/db.js';
 
 // Create Express app
@@ -72,9 +73,27 @@ const server = http.createServer(app);
 // Initialize WebSocket server
 consoleStream.initialize(server);
 
+// Initialize backup scheduler
+(async () => {
+  try {
+    await schedulerService.initialize();
+    logger.info('Backup scheduler initialized successfully');
+  } catch (error) {
+    logger.error(`Failed to initialize backup scheduler: ${error.message}`);
+  }
+})();
+
 // Graceful shutdown handler
 const shutdown = () => {
   logger.info('Shutting down gracefully...');
+
+  // Stop scheduler
+  try {
+    schedulerService.shutdown();
+    logger.info('Scheduler stopped');
+  } catch (error) {
+    logger.error(`Error stopping scheduler: ${error.message}`);
+  }
 
   server.close(() => {
     logger.info('HTTP server closed');

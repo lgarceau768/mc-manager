@@ -43,12 +43,30 @@ const initSchema = () => {
     )
   `;
 
+  const createBackupSchedulesTable = `
+    CREATE TABLE IF NOT EXISTS backup_schedules (
+      id TEXT PRIMARY KEY,
+      server_id TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      frequency TEXT NOT NULL,
+      retention_count INTEGER NOT NULL DEFAULT 5,
+      last_run INTEGER,
+      next_run INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
+    )
+  `;
+
   const createIndexes = `
     CREATE INDEX IF NOT EXISTS idx_servers_status ON servers(status);
     CREATE INDEX IF NOT EXISTS idx_servers_port ON servers(port);
+    CREATE INDEX IF NOT EXISTS idx_backup_schedules_server ON backup_schedules(server_id);
+    CREATE INDEX IF NOT EXISTS idx_backup_schedules_enabled ON backup_schedules(enabled);
   `;
 
   db.exec(createServersTable);
+  db.exec(createBackupSchedulesTable);
   db.exec(createIndexes);
 };
 

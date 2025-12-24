@@ -4,16 +4,59 @@
   flex-direction: column;
 }
 
+.app-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+}
+
+.loading-spinner {
+  font-size: 1.2rem;
+  color: #666;
+}
+
 .app-header {
   background-color: #2c3e50;
   color: white;
   padding: 1.5rem 2rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .app-header h1 {
   font-size: 1.75rem;
   font-weight: 600;
+  margin: 0;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-name {
+  font-size: 0.95rem;
+  color: #ecf0f1;
+}
+
+.btn-logout {
+  padding: 8px 16px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.btn-logout:hover {
+  background-color: #c0392b;
 }
 
 .app-main {

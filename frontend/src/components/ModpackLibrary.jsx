@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { serverApi } from '../services/api';
 import { SERVER_TYPE_OPTIONS } from '../utils/serverTypes';
+import ModpackImporter from './ModpackImporter';
 import './ModpackLibrary.css';
 
 function ModpackLibrary({ initialType = 'PAPER' }) {
@@ -53,6 +54,12 @@ function ModpackLibrary({ initialType = 'PAPER' }) {
     }
   };
 
+  const handleImportComplete = async (result) => {
+    // Refresh modpack list
+    const data = await serverApi.listSavedModpacks(selectedType);
+    setModpacks(data || []);
+  };
+
   return (
     <div className="modpack-library-card">
       <div className="modpack-library-header">
@@ -67,6 +74,18 @@ function ModpackLibrary({ initialType = 'PAPER' }) {
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Modpack Importer */}
+      <div className="modpack-importer-section">
+        <ModpackImporter
+          serverType={selectedType}
+          onImportComplete={handleImportComplete}
+        />
+      </div>
+
+      <div className="modpack-library-divider">
+        <span>OR</span>
       </div>
 
       <div className="modpack-library-list">

@@ -1,0 +1,397 @@
+.server-backups {
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.backups-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.backups-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.backup-stats {
+  display: flex;
+  gap: 20px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-item strong {
+  color: #333;
+  font-size: 1.1rem;
+}
+
+/* Backup Schedule Section */
+.backup-schedule-section {
+  background-color: white;
+  padding: 20px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
+}
+
+.backup-schedule-section h4 {
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.schedule-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.schedule-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #007bff;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(26px);
+}
+
+.toggle-label {
+  font-weight: 600;
+  color: #333;
+}
+
+.schedule-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 62px;
+}
+
+.schedule-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.schedule-field label {
+  min-width: 80px;
+  font-weight: 500;
+  color: #555;
+}
+
+.schedule-field select,
+.schedule-field input[type="number"] {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.schedule-field select {
+  min-width: 150px;
+}
+
+.schedule-field input[type="number"] {
+  width: 80px;
+}
+
+.field-hint {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.schedule-info {
+  padding: 10px;
+  background-color: #e7f3ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 4px;
+  color: #004085;
+  font-size: 0.9rem;
+}
+
+.schedule-actions {
+  display: flex;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+/* Create Backup Section */
+.create-backup-section {
+  background-color: white;
+  padding: 20px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
+}
+
+.create-backup-section h4 {
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.create-backup-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.backup-description-input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.backup-description-input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.backup-warning {
+  margin: 10px 0 0 0;
+  padding: 10px;
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  color: #856404;
+  font-size: 0.9rem;
+}
+
+/* Status Messages */
+.backup-status {
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+}
+
+.backup-status.status-success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.backup-status.status-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Backups List */
+.backups-loading,
+.no-backups {
+  background-color: white;
+  padding: 40px;
+  border-radius: 6px;
+  text-align: center;
+  color: #666;
+  border: 1px solid #e0e0e0;
+}
+
+.backups-list {
+  background-color: white;
+  padding: 20px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.backups-list h4 {
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.backups-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.backups-table thead {
+  background-color: #f8f9fa;
+}
+
+.backups-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #555;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.backups-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.backups-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.backups-table tbody tr.backup-missing {
+  opacity: 0.6;
+}
+
+.backup-date {
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.backup-description em {
+  color: #999;
+}
+
+.missing-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background-color: #dc3545;
+  color: white;
+  font-size: 0.75rem;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.backup-size {
+  font-family: monospace;
+  color: #666;
+}
+
+.backup-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Button Styles */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #545b62;
+}
+
+.btn-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: #e0a800;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .create-backup-form {
+    flex-direction: column;
+  }
+
+  .backup-description-input {
+    width: 100%;
+  }
+
+  .backups-table {
+    font-size: 0.85rem;
+  }
+
+  .backup-actions {
+    flex-direction: column;
+  }
+
+  .backup-stats {
+    flex-direction: column;
+    gap: 10px;
+  }
+}

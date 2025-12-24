@@ -7,6 +7,7 @@ import ServerSettingsForm from '../components/ServerSettingsForm';
 import ServerIconUploader from '../components/ServerIconUploader';
 import FileExplorer from '../components/FileExplorer';
 import ModpackLibrary from '../components/ModpackLibrary';
+import ServerBackups from '../components/ServerBackups';
 import { serverApi } from '../services/api';
 import { formatServerType, getServerAddress } from '../utils/serverTypes';
 import './ServerDetails.css';
@@ -224,6 +225,10 @@ function ServerDetails() {
 
       <div className="modpack-library-section">
         <ModpackLibrary initialType={server.type} />
+      </div>
+
+      <div className="backups-section">
+        <ServerBackups serverId={id} serverStatus={server.status} />
       </div>
 
       <div className="console-section">
