@@ -123,7 +123,7 @@ class ServerService {
 
       logger.info(`Server created successfully: ${serverId}`);
       const createdServer = Server.findById(serverId);
-      return this.withConnectionInfo({
+      return await this.withConnectionInfo({
         ...createdServer,
         settings: this.getServerSettingsData(createdServer)
       });
@@ -191,7 +191,7 @@ class ServerService {
 
       logger.info(`Server started successfully: ${serverId}`);
       const updated = Server.findById(serverId);
-      return this.withConnectionInfo({
+      return await this.withConnectionInfo({
         ...updated,
         settings: this.getServerSettingsData(updated)
       });
@@ -230,7 +230,7 @@ class ServerService {
 
       logger.info(`Server stopped successfully: ${serverId}`);
       const updated = Server.findById(serverId);
-      return this.withConnectionInfo({
+      return await this.withConnectionInfo({
         ...updated,
         settings: this.getServerSettingsData(updated)
       });
@@ -254,7 +254,7 @@ class ServerService {
 
       logger.info(`Server restarted successfully: ${serverId}`);
       const updated = Server.findById(serverId);
-      return this.withConnectionInfo({
+      return await this.withConnectionInfo({
         ...updated,
         settings: this.getServerSettingsData(updated)
       });
@@ -314,14 +314,14 @@ class ServerService {
       if (server.status === 'running' && server.container_id) {
         try {
           const stats = await dockerService.getContainerStats(server.container_id);
-          return this.withConnectionInfo({ ...server, stats, settings });
+          return await this.withConnectionInfo({ ...server, stats, settings });
         } catch (error) {
           logger.warn(`Failed to get stats for server ${serverId}: ${error.message}`);
-          return this.withConnectionInfo({ ...server, settings });
+          return await this.withConnectionInfo({ ...server, settings });
         }
       }
 
-      return this.withConnectionInfo({ ...server, settings });
+      return await this.withConnectionInfo({ ...server, settings });
     } catch (error) {
       logger.error(`Failed to get server details: ${error.message}`);
       throw error;
@@ -341,13 +341,13 @@ class ServerService {
           if (server.status === 'running' && server.container_id) {
             try {
               const stats = await dockerService.getContainerStats(server.container_id);
-              return this.withConnectionInfo({ ...server, stats });
+              return await this.withConnectionInfo({ ...server, stats });
             } catch (error) {
               logger.warn(`Failed to get stats for server ${server.id}: ${error.message}`);
-              return this.withConnectionInfo(server);
+              return await this.withConnectionInfo(server);
             }
           }
-          return this.withConnectionInfo(server);
+          return await this.withConnectionInfo(server);
         })
       );
 
@@ -538,7 +538,7 @@ class ServerService {
     }
 
     if (!changed) {
-      return this.withConnectionInfo({
+      return await this.withConnectionInfo({
         ...server,
         settings: this.getServerSettingsData(server)
       });
@@ -546,7 +546,7 @@ class ServerService {
 
     this.writeServerProperties(propsPath, props);
     const updatedSettings = this.getServerSettingsData(server);
-    return this.withConnectionInfo({
+    return await this.withConnectionInfo({
       ...server,
       settings: updatedSettings
     });
@@ -613,9 +613,25 @@ class ServerService {
     return filename.replace(/[^a-zA-Z0-9._-]/g, '_');
   }
 
-  withConnectionInfo(server) {
+  async withConnectionInfo(server) {
     if (!server) return server;
-    const host = getPreferredHost();
+
+    let host = getPreferredHost();
+
+    // If server has a container, try to get its IP address
+    if (server.container_id) {
+      try {
+        const containerIP = await dockerService.getContainerIP(server.container_id);
+        if (containerIP) {
+          host = containerIP;
+          logger.debug(`Using container IP ${containerIP} for server ${server.id}`);
+        }
+      } catch (error) {
+        logger.warn(`Failed to get container IP for ${server.id}: ${error.message}`);
+        // Fall back to global host
+      }
+    }
+
     const address = host ? `${host}:${server.port}` : `localhost:${server.port}`;
 
     return {

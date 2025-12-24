@@ -292,6 +292,38 @@ class DockerService {
   }
 
   /**
+   * Get container's IP address
+   */
+  async getContainerIP(containerId) {
+    try {
+      const container = this.docker.getContainer(containerId);
+      const info = await container.inspect();
+
+      // Get IP from the first network the container is connected to
+      const networks = info.NetworkSettings.Networks;
+      const networkNames = Object.keys(networks);
+
+      if (networkNames.length === 0) {
+        logger.warn(`Container ${containerId} has no networks`);
+        return null;
+      }
+
+      const firstNetwork = networks[networkNames[0]];
+      const ipAddress = firstNetwork.IPAddress;
+
+      logger.debug(`Container ${containerId} IP: ${ipAddress}`);
+      return ipAddress || null;
+    } catch (error) {
+      if (error.statusCode === 404) {
+        logger.warn(`Container ${containerId} not found when getting IP`);
+        return null;
+      }
+      logger.error(`Failed to get container IP: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
    * Parse memory string to bytes
    */
   parseMemoryToBytes(memory) {
