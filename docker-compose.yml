@@ -6,6 +6,8 @@ services:
       dockerfile: Dockerfile
     container_name: mc-manager-backend
     restart: unless-stopped
+    ports:
+      - "3001:3001"
     environment:
       - NODE_ENV=production
       - PORT=3001
@@ -15,7 +17,7 @@ services:
       - MODPACKS_PATH=/app/data/modpacks
       - BACKUPS_PATH=/app/data/backups
       - DOCKER_SOCKET=/var/run/docker.sock
-      - PUBLIC_SERVER_HOST=host.docker.internal
+      - PUBLIC_SERVER_HOST=craft.bean
       - PORT_RANGE_START=25565
       - PORT_RANGE_END=25600
       - LOG_LEVEL=info
