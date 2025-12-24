@@ -4,6 +4,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  color: var(--color-text);
 }
 
 .modpack-page-header {
@@ -26,17 +27,19 @@
 
 .modpack-page-header p {
   margin: 0;
-  color: #666;
+  color: var(--color-text-muted);
 }
 
 .modpack-table-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  background: var(--color-surface);
+  border-radius: 16px;
+  box-shadow: var(--color-shadow);
+  border: 1px solid var(--color-border);
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  color: var(--color-text);
 }
 
 .modpack-table-header {
@@ -55,20 +58,21 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.95rem;
+  color: var(--color-text);
 }
 
 .modpack-table th,
 .modpack-table td {
   padding: 0.75rem 0.5rem;
   text-align: left;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.4);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .modpack-table th {
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #475569;
+  color: var(--color-text-muted);
 }
 
 .modpack-table tr:last-child td {
@@ -76,7 +80,7 @@
 }
 
 .modpack-table code {
-  background: rgba(15, 23, 42, 0.06);
+  background: var(--color-surface-muted);
   border-radius: 6px;
   padding: 0.2rem 0.4rem;
   font-size: 0.9em;
@@ -90,8 +94,8 @@
   border-radius: 999px;
   font-size: 0.85rem;
   font-weight: 600;
-  background: rgba(79, 70, 229, 0.1);
-  color: #4f46e5;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--color-primary);
 }
 
 .modpack-name-cell {
@@ -105,49 +109,50 @@
 }
 
 .modpack-name-cell small {
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .modpack-table-empty,
 .modpack-table-error,
 .modpack-table-status {
   padding: 1rem;
-  background: rgba(148, 163, 184, 0.15);
-  color: #475569;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
   border-radius: 8px;
   text-align: center;
+  border: 1px solid var(--color-border);
 }
 
 .modpack-table-error {
-  background: rgba(239, 68, 68, 0.12);
-  color: #b91c1c;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .modpack-table-status.status-success {
-  background: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .modpack-table-status.status-error {
-  background: rgba(239, 68, 68, 0.12);
-  color: #b91c1c;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 .modpack-table-delete {
-  background-color: #d14343;
+  background-color: var(--color-danger);
   color: #fff;
   border: none;
   border-radius: 4px;
   padding: 0.35rem 0.65rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, opacity 0.2s;
 }
 
 .modpack-table-delete:hover:not(:disabled) {
-  background-color: #b73232;
+  opacity: 0.9;
 }
 
 .modpack-table-delete:disabled {
-  background-color: #e59898;
+  opacity: 0.6;
   cursor: not-allowed;
 }

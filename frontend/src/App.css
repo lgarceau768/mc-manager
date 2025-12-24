@@ -1,38 +1,48 @@
 :root {
   --font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --color-bg: #e4e9fb;
+  --color-bg: #dde3f7;
   --color-surface: #ffffff;
-  --color-surface-muted: #dfe6fd;
-  --color-text: #0b1220;
-  --color-text-muted: #475569;
-  --color-border: rgba(15, 23, 42, 0.16);
-  --color-shadow: 0 25px 60px rgba(15, 23, 42, 0.12);
-  --color-primary: #4338ca;
-  --color-primary-accent: #312e81;
-  --color-header-bg: rgba(255, 255, 255, 0.92);
-  --color-header-border: rgba(15, 23, 42, 0.12);
-  --color-nav-link: #111827;
-  --color-nav-link-hover: #3730a3;
+  --color-surface-muted: #d7def5;
+  --color-text: #050816;
+  --color-text-muted: #374151;
+  --color-border: rgba(15, 23, 42, 0.2);
+  --color-shadow: 0 25px 60px rgba(15, 23, 42, 0.15);
+  --color-primary: #2f2dbd;
+  --color-primary-accent: #1f1c7a;
+  --color-header-bg: rgba(255, 255, 255, 0.95);
+  --color-header-border: rgba(15, 23, 42, 0.14);
+  --color-nav-link: #0f172a;
+  --color-nav-link-hover: #312e81;
   --color-card: #ffffff;
   --color-danger: #b91c1c;
+  --color-danger-bg: rgba(185, 28, 28, 0.18);
+  --color-success: #15803d;
+  --color-success-bg: rgba(21, 128, 61, 0.18);
+  --color-warning: #d97706;
+  --color-warning-bg: rgba(217, 119, 6, 0.18);
 }
 
 :root.dark-theme {
-  --color-bg: #030712;
-  --color-surface: #0b1222;
-  --color-surface-muted: #111c33;
-  --color-text: #f8fafc;
-  --color-text-muted: #cbd5f5;
-  --color-border: rgba(148, 163, 184, 0.35);
-  --color-shadow: 0 25px 60px rgba(2, 6, 23, 0.85);
-  --color-primary: #c7d2fe;
-  --color-primary-accent: #a5b4fc;
-  --color-header-bg: rgba(6, 11, 26, 0.95);
+  --color-bg: #01030a;
+  --color-surface: #0a1020;
+  --color-surface-muted: #121c33;
+  --color-text: #f4f7ff;
+  --color-text-muted: #c7d2fe;
+  --color-border: rgba(148, 163, 184, 0.4);
+  --color-shadow: 0 25px 60px rgba(2, 6, 23, 0.9);
+  --color-primary: #cfd6ff;
+  --color-primary-accent: #aab4ff;
+  --color-header-bg: rgba(3, 6, 20, 0.92);
   --color-header-border: rgba(99, 102, 241, 0.35);
   --color-nav-link: #f8fafc;
   --color-nav-link-hover: #c7d2fe;
-  --color-card: rgba(15, 23, 42, 0.95);
+  --color-card: rgba(13, 19, 39, 0.98);
   --color-danger: #f87171;
+  --color-danger-bg: rgba(248, 113, 113, 0.2);
+  --color-success: #4ade80;
+  --color-success-bg: rgba(74, 222, 128, 0.18);
+  --color-warning: #fbbf24;
+  --color-warning-bg: rgba(251, 191, 36, 0.2);
 }
 
 *,
@@ -55,8 +65,9 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.15), transparent 35%),
-    radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.15), transparent 35%),
+  background:
+    radial-gradient(circle at 0% 0%, rgba(47, 45, 189, 0.12), transparent 40%),
+    radial-gradient(circle at 100% 0%, rgba(31, 28, 122, 0.12), transparent 35%),
     var(--color-bg);
 }
 
@@ -261,7 +272,7 @@ span {
 
 code {
   color: var(--color-text);
-  background: rgba(15, 23, 42, 0.08);
+  background: var(--color-surface-muted);
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
 }
