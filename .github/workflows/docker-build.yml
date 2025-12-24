@@ -1,0 +1,28 @@
+name: Docker Image
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build manager image
+        env:
+          # Provide CI-safe defaults for host-mounted paths
+          SERVERS_DATA_PATH_HOST: /tmp/mc-manager/servers
+          NODE_ENV: production
+        run: npm run build:image

@@ -119,6 +119,10 @@ For publishing a self-contained image (UI + API) you can use the build tooling u
 
 The `/data` bind mount stores the SQLite database, Minecraft server data, and shared modpack library. `SERVERS_DATA_PATH_HOST` must be the real host path that Docker should mount into the Minecraft containers so they see the same world data directory.
 
+### Continuous Integration
+
+Every push or pull request automatically triggers `.github/workflows/docker-build.yml`, which runs `npm run build:image` on GitHub Actions. This validates that the Docker image can be produced end-to-end using the same build script shipped with the repository. If you add new environment variables or build arguments, keep the workflow in sync so CI mirrors local behavior.
+
 ### Option 2: Development Mode (Local)
 
 Run both backend and frontend locally without Docker:
