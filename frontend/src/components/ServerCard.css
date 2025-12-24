@@ -84,11 +84,14 @@
   font-size: 0.875rem;
   font-weight: 500;
   transition: opacity 0.2s;
-  flex: 1;
 }
 
 .btn:hover {
   opacity: 0.8;
+}
+
+.server-card-actions .btn {
+  flex: 1;
 }
 
 .btn-success {
