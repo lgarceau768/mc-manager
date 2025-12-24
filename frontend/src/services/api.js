@@ -267,6 +267,14 @@ export const serverApi = {
   },
 
   /**
+   * Delete a modpack from the shared library
+   */
+  deleteSavedModpack: async (type, filename) => {
+    const response = await api.delete(`/modpacks/${(type || 'PAPER').toLowerCase()}/${encodeURIComponent(filename)}`);
+    return response.data;
+  },
+
+  /**
    * Import modpack from URL (CurseForge, Modrinth, etc.)
    */
   importModpackFromUrl: async (url, serverType = null) => {

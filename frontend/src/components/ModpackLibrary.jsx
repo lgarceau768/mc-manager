@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { serverApi } from '../services/api';
 import { SERVER_TYPE_OPTIONS } from '../utils/serverTypes';
 import ModpackImporter from './ModpackImporter';
@@ -17,25 +17,27 @@ function ModpackLibrary({
   const [applying, setApplying] = useState(null);
   const [status, setStatus] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [deleting, setDeleting] = useState(null);
 
   useEffect(() => {
     setSelectedType(initialType || 'PAPER');
   }, [initialType]);
 
-  useEffect(() => {
-    const fetchModpacks = async () => {
-      try {
-        setLoading(true);
-        const data = await serverApi.listSavedModpacks(selectedType);
-        setModpacks(data || []);
-      } catch (error) {
-        setStatus({ type: 'error', message: error.message });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchModpacks();
+  const refreshModpacks = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await serverApi.listSavedModpacks(selectedType);
+      setModpacks(data || []);
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+    } finally {
+      setLoading(false);
+    }
   }, [selectedType]);
+
+  useEffect(() => {
+    refreshModpacks();
+  }, [refreshModpacks]);
 
   const handleUpload = async (event) => {
     event.preventDefault();
@@ -50,8 +52,7 @@ function ModpackLibrary({
       await serverApi.uploadSavedModpack(selectedType, selectedFile);
       setSelectedFile(null);
       event.target.reset();
-      const data = await serverApi.listSavedModpacks(selectedType);
-      setModpacks(data || []);
+      await refreshModpacks();
       setStatus({ type: 'success', message: 'Modpack saved successfully' });
     } catch (error) {
       setStatus({ type: 'error', message: error.message });
@@ -62,8 +63,7 @@ function ModpackLibrary({
 
   const handleImportComplete = async (result) => {
     // Refresh modpack list
-    const data = await serverApi.listSavedModpacks(selectedType);
-    setModpacks(data || []);
+    await refreshModpacks();
   };
 
   const handleApplyModpack = async (modpackFilename) => {
@@ -86,6 +86,29 @@ function ModpackLibrary({
       setStatus({ type: 'error', message: error.message });
     } finally {
       setApplying(null);
+    }
+  };
+
+  const handleDeleteModpack = async (modpackFilename) => {
+    if (!showManagement) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Remove "${modpackFilename}" from the modpack library?`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeleting(modpackFilename);
+      setStatus(null);
+      await serverApi.deleteSavedModpack(selectedType, modpackFilename);
+      await refreshModpacks();
+      setStatus({ type: 'success', message: `Removed "${modpackFilename}" from the library` });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -133,16 +156,28 @@ function ModpackLibrary({
                   <span className="modpack-name">{pack.name}</span>
                   <code className="modpack-filename">{pack.filename}</code>
                 </div>
-                {serverId && (
-                  <button
-                    className="btn btn-sm btn-apply"
-                    onClick={() => handleApplyModpack(pack.filename)}
-                    disabled={applying === pack.filename || serverStatus === 'running'}
-                    title={serverStatus === 'running' ? 'Stop the server first' : 'Apply this modpack to the server'}
-                  >
-                    {applying === pack.filename ? 'Applying...' : 'Apply'}
-                  </button>
-                )}
+                <div className="modpack-actions">
+                  {serverId && (
+                    <button
+                      className="btn btn-sm btn-apply"
+                      onClick={() => handleApplyModpack(pack.filename)}
+                      disabled={applying === pack.filename || serverStatus === 'running'}
+                      title={serverStatus === 'running' ? 'Stop the server first' : 'Apply this modpack to the server'}
+                    >
+                      {applying === pack.filename ? 'Applying...' : 'Apply'}
+                    </button>
+                  )}
+                  {showManagement && (
+                    <button
+                      className="btn btn-sm btn-delete"
+                      onClick={() => handleDeleteModpack(pack.filename)}
+                      disabled={deleting === pack.filename}
+                      title="Remove this modpack from the shared library"
+                    >
+                      {deleting === pack.filename ? 'Removing...' : 'Delete'}
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

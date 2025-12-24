@@ -112,4 +112,21 @@ router.post('/:type', upload.single('file'), async (req, res, next) => {
   }
 });
 
+/**
+ * Delete a saved modpack
+ * DELETE /api/modpacks/:type/:filename
+ */
+router.delete('/:type/:filename', async (req, res, next) => {
+  try {
+    const { type, filename } = req.params;
+    const result = serverService.deleteSavedModpack(type, filename);
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

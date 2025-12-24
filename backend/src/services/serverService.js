@@ -903,6 +903,33 @@ class ServerService {
     return this.buildModpackSummary(type, safeName);
   }
 
+  deleteSavedModpack(type, filename) {
+    if (!filename) {
+      throw new ValidationError('Filename is required');
+    }
+
+    const dir = this.getModpackDir(type);
+    const safeName = this.sanitizeFileName(filename);
+    const fullPath = path.join(dir, safeName);
+
+    if (!fs.existsSync(fullPath)) {
+      throw new NotFoundError(`Modpack not found: ${filename}`);
+    }
+
+    fs.unlinkSync(fullPath);
+
+    const metadataPath = path.join(dir, `${path.basename(safeName, path.extname(safeName))}.json`);
+    if (fs.existsSync(metadataPath)) {
+      fs.unlinkSync(metadataPath);
+    }
+
+    logger.info(`Deleted modpack ${safeName} from ${type}`);
+
+    return {
+      filename: safeName
+    };
+  }
+
   getSavedModpackZip(type, filename) {
     if (!filename) {
       throw new ValidationError('Modpack selection is required');

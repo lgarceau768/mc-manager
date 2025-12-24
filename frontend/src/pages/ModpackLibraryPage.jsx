@@ -17,11 +17,14 @@ function ModpackLibraryPage() {
   const [modpacks, setModpacks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [tableMessage, setTableMessage] = useState(null);
+  const [deleting, setDeleting] = useState(null);
 
   const fetchAllModpacks = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      setTableMessage(null);
       const data = await serverApi.listAllModpacks();
       setModpacks(data || []);
     } catch (err) {
@@ -34,6 +37,37 @@ function ModpackLibraryPage() {
   useEffect(() => {
     fetchAllModpacks();
   }, [fetchAllModpacks]);
+
+  const handleDeletePack = useCallback(
+    async (pack) => {
+      if (!pack) return;
+      const confirmed = window.confirm(`Remove "${pack.filename}" from the ${pack.serverType} library?`);
+      if (!confirmed) {
+        return;
+      }
+
+      const packKey = `${pack.serverType}:${pack.filename}`;
+
+      try {
+        setDeleting(packKey);
+        setTableMessage(null);
+        await serverApi.deleteSavedModpack(pack.serverType, pack.filename);
+        await fetchAllModpacks();
+        setTableMessage({
+          type: 'success',
+          message: `Removed "${pack.filename}" from the ${formatServerType(pack.serverType)} library`
+        });
+      } catch (err) {
+        setTableMessage({
+          type: 'error',
+          message: err.message
+        });
+      } finally {
+        setDeleting(null);
+      }
+    },
+    [fetchAllModpacks]
+  );
 
   return (
     <div className="modpack-page">
@@ -59,6 +93,11 @@ function ModpackLibraryPage() {
         </div>
 
         {error && <div className="modpack-table-error">Failed to load modpacks: {error}</div>}
+        {tableMessage && (
+          <div className={`modpack-table-status status-${tableMessage.type}`}>
+            {tableMessage.message}
+          </div>
+        )}
 
         {loading ? (
           <div className="modpack-table-empty">Loading modpacks...</div>
@@ -75,6 +114,7 @@ function ModpackLibraryPage() {
                   <th>Minecraft Versions</th>
                   <th>Filename</th>
                   <th>Imported</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -99,6 +139,16 @@ function ModpackLibraryPage() {
                       <code>{pack.filename}</code>
                     </td>
                     <td>{formatDateTime(pack.importedAt)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-sm modpack-table-delete"
+                        onClick={() => handleDeletePack(pack)}
+                        disabled={deleting === `${pack.serverType}:${pack.filename}`}
+                      >
+                        {deleting === `${pack.serverType}:${pack.filename}` ? 'Removing...' : 'Delete'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

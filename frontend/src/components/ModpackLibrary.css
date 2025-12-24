@@ -52,6 +52,14 @@
   flex: 1;
 }
 
+.modpack-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .modpack-name {
   font-weight: 600;
   color: #333;
@@ -86,6 +94,25 @@
 
 .btn-apply:disabled {
   background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.btn-delete {
+  background-color: #d14343;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background-color: #b73232;
+}
+
+.btn-delete:disabled {
+  background-color: #e59898;
   cursor: not-allowed;
 }
 
