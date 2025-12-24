@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import ServerStatus from '../components/ServerStatus';
 import ServerConsole from '../components/ServerConsole';
 import ModUploader from '../components/ModUploader';
@@ -224,7 +224,18 @@ function ServerDetails() {
       </div>
 
       <div className="modpack-library-section">
-        <ModpackLibrary initialType={server.type} serverId={id} serverStatus={server.status} />
+        <div className="section-heading">
+          <h3>Server Modpacks</h3>
+          <Link to="/modpacks" className="link-button">
+            Manage Library
+          </Link>
+        </div>
+        <ModpackLibrary
+          initialType={server.type}
+          serverId={id}
+          serverStatus={server.status}
+          showManagement={false}
+        />
       </div>
 
       <div className="backups-section">

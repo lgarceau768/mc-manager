@@ -2,12 +2,36 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import logger from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const projectRoot = path.resolve(__dirname, '../../../');
+const defaultDatabasePath = path.join(projectRoot, 'data/database/servers.db');
+const legacyDatabasePath = path.join(__dirname, '../../data/database/servers.db');
+
+let resolvedDatabasePath = process.env.DATABASE_PATH || defaultDatabasePath;
+
+if (!process.env.DATABASE_PATH && fs.existsSync(legacyDatabasePath)) {
+  const legacyStats = fs.statSync(legacyDatabasePath);
+  const defaultExists = fs.existsSync(defaultDatabasePath);
+  const defaultStats = defaultExists ? fs.statSync(defaultDatabasePath) : null;
+
+  if (!defaultExists || legacyStats.mtimeMs > (defaultStats?.mtimeMs || 0)) {
+    fs.mkdirSync(path.dirname(defaultDatabasePath), { recursive: true });
+    if (defaultExists) {
+      const backupPath = `${defaultDatabasePath}.bak`;
+      fs.copyFileSync(defaultDatabasePath, backupPath);
+      logger.warn(`Existing database backed up to ${backupPath} before migrating legacy data`);
+    }
+    fs.copyFileSync(legacyDatabasePath, defaultDatabasePath);
+    logger.info('Migrated legacy SQLite database from backend/data to data/database');
+  }
+}
+
 // Get database path from environment or use default
-const DATABASE_PATH = process.env.DATABASE_PATH || path.join(__dirname, '../../data/database/servers.db');
+const DATABASE_PATH = resolvedDatabasePath;
 
 // Ensure database directory exists
 const dbDir = path.dirname(DATABASE_PATH);

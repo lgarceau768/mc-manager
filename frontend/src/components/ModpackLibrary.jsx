@@ -4,7 +4,12 @@ import { SERVER_TYPE_OPTIONS } from '../utils/serverTypes';
 import ModpackImporter from './ModpackImporter';
 import './ModpackLibrary.css';
 
-function ModpackLibrary({ initialType = 'PAPER', serverId = null, serverStatus = null }) {
+function ModpackLibrary({
+  initialType = 'PAPER',
+  serverId = null,
+  serverStatus = null,
+  showManagement = true
+}) {
   const [selectedType, setSelectedType] = useState(initialType);
   const [modpacks, setModpacks] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -100,17 +105,20 @@ function ModpackLibrary({ initialType = 'PAPER', serverId = null, serverStatus =
         </select>
       </div>
 
-      {/* Modpack Importer */}
-      <div className="modpack-importer-section">
-        <ModpackImporter
-          serverType={selectedType}
-          onImportComplete={handleImportComplete}
-        />
-      </div>
+      {showManagement && (
+        <>
+          <div className="modpack-importer-section">
+            <ModpackImporter
+              serverType={selectedType}
+              onImportComplete={handleImportComplete}
+            />
+          </div>
 
-      <div className="modpack-library-divider">
-        <span>OR</span>
-      </div>
+          <div className="modpack-library-divider">
+            <span>OR</span>
+          </div>
+        </>
+      )}
 
       <div className="modpack-library-list">
         {loading ? (
@@ -141,17 +149,19 @@ function ModpackLibrary({ initialType = 'PAPER', serverId = null, serverStatus =
         )}
       </div>
 
-      <form className="modpack-upload-form" onSubmit={handleUpload}>
-        <input
-          type="file"
-          accept=".zip"
-          onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-          disabled={uploading}
-        />
-        <button type="submit" className="btn btn-primary" disabled={uploading}>
-          {uploading ? 'Saving...' : 'Save Modpack'}
-        </button>
-      </form>
+      {showManagement && (
+        <form className="modpack-upload-form" onSubmit={handleUpload}>
+          <input
+            type="file"
+            accept=".zip"
+            onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+            disabled={uploading}
+          />
+          <button type="submit" className="btn btn-primary" disabled={uploading}>
+            {uploading ? 'Saving...' : 'Save Modpack'}
+          </button>
+        </form>
+      )}
 
       {status && (
         <div className={`modpack-library-status status-${status.type}`}>

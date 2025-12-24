@@ -244,6 +244,14 @@ export const serverApi = {
   },
 
   /**
+   * List saved modpacks across all server types
+   */
+  listAllModpacks: async () => {
+    const response = await api.get('/modpacks');
+    return response.data;
+  },
+
+  /**
    * Upload a modpack to the shared library
    */
   uploadSavedModpack: async (type, file) => {

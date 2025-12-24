@@ -1,6 +1,9 @@
 import Joi from 'joi';
 import { ValidationError } from './errors.js';
 
+const PORT_RANGE_START = parseInt(process.env.PORT_RANGE_START || '25565', 10);
+const PORT_RANGE_END = parseInt(process.env.PORT_RANGE_END || '25600', 10);
+
 /**
  * Joi schemas for request validation
  */
@@ -67,6 +70,18 @@ export const createServerSchema = Joi.object({
       'number.max': 'CPU limit must not exceed 8.0'
     })
 ,
+
+  port: Joi.number()
+    .integer()
+    .min(PORT_RANGE_START)
+    .max(PORT_RANGE_END)
+    .optional()
+    .messages({
+      'number.base': 'Port must be a number',
+      'number.min': `Port must be between ${PORT_RANGE_START} and ${PORT_RANGE_END}`,
+      'number.max': `Port must be between ${PORT_RANGE_START} and ${PORT_RANGE_END}`,
+      'number.integer': 'Port must be an integer'
+    }),
 
   modpack: Joi.string().optional()
 });

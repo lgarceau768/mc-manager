@@ -10,6 +10,7 @@ import { PNG } from 'pngjs';
 import Server from '../models/Server.js';
 import dockerService from './dockerService.js';
 import portService from './portService.js';
+import modpackImportService from './modpackImportService.js';
 import logger from '../utils/logger.js';
 import { getPreferredHost } from '../utils/network.js';
 import { NotFoundError, ConflictError, ValidationError } from '../utils/errors.js';
@@ -19,9 +20,10 @@ const __dirname = path.dirname(__filename);
 
 class ServerService {
   constructor() {
-    this.serversDataPath = process.env.SERVERS_DATA_PATH || path.join(__dirname, '../../data/servers');
-    this.modpacksBasePath = process.env.MODPACKS_PATH || path.join(__dirname, '../../modpacks');
+    this.serversDataPath = process.env.SERVERS_DATA_PATH || path.join(__dirname, '../../../data/servers');
+    this.modpacksBasePath = process.env.MODPACKS_PATH || path.join(__dirname, '../../../data/modpacks');
     this.serversDataHostPath = process.env.SERVERS_DATA_PATH_HOST || this.serversDataPath;
+    this.backupsBasePath = process.env.BACKUPS_PATH || path.join(__dirname, '../../../data/backups');
     this.serverTypes = ['PAPER', 'FABRIC', 'FORGE', 'NEOFORGE'];
 
     // Ensure servers data directory exists
@@ -29,9 +31,11 @@ class ServerService {
       fs.mkdirSync(this.serversDataPath, { recursive: true });
     }
 
-    if (!fs.existsSync(this.modpacksBasePath)) {
-      fs.mkdirSync(this.modpacksBasePath, { recursive: true });
-    }
+    [this.modpacksBasePath, this.backupsBasePath].forEach((dir) => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    });
 
     this.serverTypes.forEach((type) => {
       const dir = this.getModpackDir(type);
@@ -44,7 +48,7 @@ class ServerService {
   /**
    * Create a new server
    */
-  async createServer({ name, version, memory, cpuLimit, type, modpack }) {
+  async createServer({ name, version, memory, cpuLimit, type, modpack, port: requestedPort }) {
     try {
       logger.info(`Creating server: ${name}`);
 
@@ -59,8 +63,21 @@ class ServerService {
       // Generate unique ID
       const serverId = uuidv4();
 
-      // Get next available port
-      const port = portService.getNextAvailablePort();
+      // Determine port (requested or next available)
+      let port;
+      if (typeof requestedPort === 'number' && !Number.isNaN(requestedPort)) {
+        try {
+          portService.validatePort(requestedPort);
+        } catch (error) {
+          if (error instanceof ConflictError) {
+            throw error;
+          }
+          throw new ValidationError(error.message);
+        }
+        port = requestedPort;
+      } else {
+        port = portService.getNextAvailablePort();
+      }
 
       // Create volume directory
       const volumePath = path.join(this.serversDataPath, serverId);
@@ -272,9 +289,8 @@ class ServerService {
       // Delete from database
       Server.delete(serverId);
 
-      // Optionally archive or delete volume
-      // For now, we'll leave the volume in place for data recovery
-      logger.info(`Server deleted successfully (volume preserved): ${serverId}`);
+      // Remove server volume and related files
+      this.removeServerData(serverId, server.volume_path);
 
       return { message: 'Server deleted successfully' };
     } catch (error) {
@@ -339,6 +355,53 @@ class ServerService {
     } catch (error) {
       logger.error(`Failed to list servers: ${error.message}`);
       throw error;
+    }
+  }
+
+  removeServerData(serverId, volumePath) {
+    const allowedRoots = [
+      this.serversDataPath,
+      this.serversDataHostPath,
+      this.backupsBasePath
+    ]
+      .filter(Boolean)
+      .map((p) => path.resolve(p));
+
+    const hostVolumePath = this.serversDataHostPath
+      ? path.join(this.serversDataHostPath, serverId)
+      : null;
+    const targets = [
+      { targetPath: volumePath, label: 'server volume' },
+      { targetPath: hostVolumePath, label: 'host server volume' },
+      { targetPath: path.join(this.backupsBasePath, serverId), label: 'server backups' }
+    ];
+
+    targets.forEach(({ targetPath, label }) => {
+      this.removeDirectoryIfSafe(targetPath, allowedRoots, label);
+    });
+  }
+
+  removeDirectoryIfSafe(targetPath, allowedRoots, label) {
+    if (!targetPath) return;
+    const resolvedTarget = path.resolve(targetPath);
+    if (!fs.existsSync(resolvedTarget)) {
+      return;
+    }
+
+    const isAllowed = allowedRoots.some((root) =>
+      resolvedTarget === root || resolvedTarget.startsWith(`${root}${path.sep}`)
+    );
+
+    if (!isAllowed) {
+      logger.warn(`Refusing to delete ${label} outside managed directories: ${resolvedTarget}`);
+      return;
+    }
+
+    try {
+      fs.rmSync(resolvedTarget, { recursive: true, force: true });
+      logger.info(`Deleted ${label} at ${resolvedTarget}`);
+    } catch (error) {
+      logger.warn(`Failed to delete ${label} at ${resolvedTarget}: ${error.message}`);
     }
   }
 
@@ -787,10 +850,27 @@ class ServerService {
     if (!fs.existsSync(dir)) return [];
     return fs.readdirSync(dir)
       .filter((name) => name.toLowerCase().endsWith('.zip'))
-      .map((filename) => ({
-        name: path.basename(filename, path.extname(filename)),
-        filename
-      }));
+      .map((filename) => this.buildModpackSummary(type, filename))
+      .sort((a, b) => {
+        const toTimestamp = (value) => {
+          if (!value) return 0;
+          const ts = new Date(value).getTime();
+          return Number.isFinite(ts) ? ts : 0;
+        };
+        return toTimestamp(b.importedAt) - toTimestamp(a.importedAt);
+      });
+  }
+
+  listAllSavedModpacks() {
+    const packs = this.serverTypes.flatMap((type) => this.listSavedModpacks(type));
+    return packs.sort((a, b) => {
+      const toTimestamp = (value) => {
+        if (!value) return 0;
+        const ts = new Date(value).getTime();
+        return Number.isFinite(ts) ? ts : 0;
+      };
+      return toTimestamp(b.importedAt) - toTimestamp(a.importedAt);
+    });
   }
 
   saveModpackFile(type, file) {
@@ -802,10 +882,25 @@ class ServerService {
     const safeName = this.sanitizeFileName(file.originalname);
     const destination = path.join(dir, safeName);
     fs.copyFileSync(file.path, destination);
-    return {
-      name: path.basename(safeName, path.extname(safeName)),
-      filename: safeName
-    };
+    const metadataPath = path.join(dir, `${path.basename(safeName, ext)}.json`);
+    try {
+      const extractedMetadata = modpackImportService.extractZipMetadata(file.path);
+      const metadata = {
+        ...extractedMetadata,
+        source: 'upload',
+        originalName: file.originalname,
+        name: extractedMetadata?.name
+          || extractedMetadata?.manifest?.name
+          || path.basename(safeName, ext),
+        importedAt: new Date().toISOString(),
+        serverType: this.normalizeServerType(type),
+        fileName: safeName
+      };
+      fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+    } catch (error) {
+      logger.warn(`Unable to extract metadata for uploaded modpack ${safeName}: ${error.message}`);
+    }
+    return this.buildModpackSummary(type, safeName);
   }
 
   getSavedModpackZip(type, filename) {
@@ -854,6 +949,93 @@ class ServerService {
       logger.error(`Failed to apply modpack ${modpackFilename} to server ${serverId}: ${error.message}`);
       throw error;
     }
+  }
+
+  buildModpackSummary(type, filename) {
+    const metadata = this.getModpackMetadata(type, filename);
+    const baseName = path.basename(filename, path.extname(filename));
+    const gameVersions = this.extractGameVersionsFromMetadata(metadata);
+    const normalizedType = this.normalizeServerType(type);
+
+    return {
+      name: metadata?.name || metadata?.manifest?.name || baseName,
+      filename,
+      version: metadata?.version || metadata?.manifest?.version || metadata?.modrinthIndex?.versionId,
+      description: metadata?.description,
+      importedAt: metadata?.importedAt || null,
+      serverType: metadata?.serverType || normalizedType,
+      gameVersions,
+      loaders: metadata?.loaders
+        || metadata?.manifest?.modLoaders?.map((loader) => loader.id || loader)
+        || (metadata?.modrinthIndex?.dependencies?.loader ? [metadata.modrinthIndex.dependencies.loader] : undefined)
+    };
+  }
+
+  getModpackMetadata(type, filename) {
+    try {
+      const dir = this.getModpackDir(type);
+      const baseName = path.basename(filename, path.extname(filename));
+      const metadataPath = path.join(dir, `${baseName}.json`);
+      if (!fs.existsSync(metadataPath)) {
+        return null;
+      }
+      const raw = fs.readFileSync(metadataPath, 'utf8');
+      return JSON.parse(raw);
+    } catch (error) {
+      logger.warn(`Failed to read metadata for modpack ${filename}: ${error.message}`);
+      return null;
+    }
+  }
+
+  extractGameVersionsFromMetadata(metadata) {
+    if (!metadata) return [];
+    const versions = new Set();
+    if (Array.isArray(metadata.gameVersions)) {
+      metadata.gameVersions.forEach((version) => {
+        if (version) versions.add(String(version));
+      });
+    }
+    if (metadata.manifest?.minecraftVersion) {
+      versions.add(String(metadata.manifest.minecraftVersion));
+    }
+    if (metadata.modrinthIndex?.gameVersion) {
+      versions.add(String(metadata.modrinthIndex.gameVersion));
+    }
+    if (metadata.modrinthIndex?.dependencies?.minecraft) {
+      versions.add(String(metadata.modrinthIndex.dependencies.minecraft));
+    }
+    if (metadata.modrinthIndex?.dependencies?.minecraftVersion) {
+      versions.add(String(metadata.modrinthIndex.dependencies.minecraftVersion));
+    }
+    return Array.from(versions).sort((a, b) => this.compareMinecraftVersions(b, a));
+  }
+
+  compareMinecraftVersions(a, b) {
+    if (a === b) return 0;
+    const parseParts = (value) => String(value)
+      .split('.')
+      .map((part) => {
+        const numeric = parseInt(part.replace(/[^0-9]/g, ''), 10);
+        return Number.isNaN(numeric) ? null : numeric;
+      });
+
+    const aParts = parseParts(a);
+    const bParts = parseParts(b);
+    const length = Math.max(aParts.length, bParts.length);
+
+    for (let i = 0; i < length; i++) {
+      const aVal = aParts[i];
+      const bVal = bParts[i];
+      if (aVal === null || bVal === null) {
+        continue;
+      }
+      if (aVal !== bVal) {
+        return aVal - bVal;
+      }
+    }
+
+    // Fallback to locale compare if numeric parts were inconclusive
+    return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
   }
 
   async installPackArchive(zipPath, volumePath) {

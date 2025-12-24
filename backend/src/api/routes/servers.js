@@ -20,7 +20,7 @@ const upload = multer({
  */
 router.post('/', validate(createServerSchema), async (req, res, next) => {
   try {
-    const { name, version, memory, cpuLimit, type, modpack } = req.body;
+    const { name, version, memory, cpuLimit, type, modpack, port } = req.body;
 
     const server = await serverService.createServer({
       name,
@@ -28,7 +28,8 @@ router.post('/', validate(createServerSchema), async (req, res, next) => {
       memory,
       cpuLimit,
       type,
-      modpack
+      modpack,
+      port
     });
 
     logger.info(`Server created via API: ${server.id}`);

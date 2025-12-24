@@ -1,7 +1,8 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Dashboard from './pages/Dashboard';
 import ServerDetails from './pages/ServerDetails';
+import ModpackLibraryPage from './pages/ModpackLibraryPage';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
@@ -35,7 +36,13 @@ function App() {
             <ProtectedRoute>
               <div>
                 <header className="app-header">
-                  <h1>⛏️ Minecraft Server Manager</h1>
+                  <div className="app-header-left">
+                    <h1>⛏️ Minecraft Server Manager</h1>
+                    <nav className="app-nav">
+                      <Link to="/">Dashboard</Link>
+                      <Link to="/modpacks">Modpack Library</Link>
+                    </nav>
+                  </div>
                   {authEnabled && user && (
                     <div className="header-user">
                       <span className="user-name">👤 {user.username}</span>
@@ -50,6 +57,7 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/servers/:id" element={<ServerDetails />} />
+                    <Route path="/modpacks" element={<ModpackLibraryPage />} />
                   </Routes>
                 </main>
               </div>

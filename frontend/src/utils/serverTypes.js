@@ -22,11 +22,20 @@ export const formatServerType = (type) => {
 
 export const getServerAddress = (server) => {
   if (!server) return '';
+
+  const hostFromServer =
+    server.connectionInfo?.host ||
+    server.connectionInfo?.address?.split(':')[0] ||
+    server.host ||
+    server.address;
+
   const browserHost =
     typeof window !== 'undefined' && window.location && window.location.hostname
       ? window.location.hostname
       : null;
-  const host = browserHost || server.connectionInfo?.host || 'localhost';
+
+  const host = hostFromServer || browserHost || 'localhost';
   const port = server.connectionInfo?.port || server.port;
+
   return `${host}:${port}`;
 };

@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 
 class BackupService {
   constructor() {
-    this.backupsBasePath = process.env.BACKUPS_PATH || path.join(__dirname, '../../data/backups');
+    this.backupsBasePath = process.env.BACKUPS_PATH || path.join(__dirname, '../../../data/backups');
 
     // Ensure backups directory exists
     if (!fs.existsSync(this.backupsBasePath)) {

@@ -13,11 +13,11 @@ yarn-error.log*
 data/database/*.db
 data/database/*.db-shm
 data/database/*.db-wal
+data/database/*.bak
 data/servers/*/
 data/backups/*/
 data/modpacks/*/
-
-backend/data/*/
+backend/data/
 
 # Build outputs
 frontend/dist/
@@ -26,8 +26,6 @@ frontend/build/
 # Logs
 logs/
 *.log
-
-modpacks/
 
 # IDE
 .vscode/

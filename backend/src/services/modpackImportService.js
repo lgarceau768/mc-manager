@@ -12,8 +12,9 @@ const __dirname = path.dirname(__filename);
 
 class ModpackImportService {
   constructor() {
-    this.modpacksBasePath = process.env.MODPACKS_PATH || path.join(__dirname, '../../modpacks');
-    this.tempPath = path.join(__dirname, '../../temp');
+    this.modpacksBasePath = process.env.MODPACKS_PATH || path.join(__dirname, '../../../data/modpacks');
+    this.tempPath = path.join(__dirname, '../../../temp');
+    this.supportedTypes = ['PAPER', 'FABRIC', 'FORGE', 'NEOFORGE'];
 
     // Ensure directories exist
     if (!fs.existsSync(this.modpacksBasePath)) {
@@ -56,14 +57,23 @@ class ModpackImportService {
 
       // Validate and extract metadata from zip
       const zipMetadata = this.extractZipMetadata(tempFile);
+      const loaderPreference = this.getLoaderPreference(zipMetadata);
+      const requestedType = serverType ? this.normalizeServerType(serverType) : null;
+
+      if (requestedType && loaderPreference && requestedType !== loaderPreference) {
+        throw new ValidationError(
+          `Modpack appears to target ${loaderPreference}, but ${requestedType} was selected.`
+        );
+      }
 
       // Determine server type if not provided
-      const detectedType = serverType || this.detectServerType(zipMetadata);
+      const detectedType = this.detectServerType(zipMetadata, requestedType || loaderPreference);
 
       // Save to modpacks library
       const savedPath = await this.saveToLibrary(tempFile, detectedType, {
         ...metadata,
-        ...zipMetadata
+        ...zipMetadata,
+        detectedLoader: loaderPreference || null
       });
 
       // Clean up temp file
@@ -236,17 +246,25 @@ class ModpackImportService {
         hasPluginsFolder: false,
         hasConfigFolder: false,
         hasOverridesFolder: false,
-        manifestFound: false
+        manifestFound: false,
+        loaderHints: []
       };
+      const loaderHints = new Set();
 
       // Check for common modpack structures
       entries.forEach(entry => {
         const entryPath = entry.entryName.toLowerCase();
 
+        this.addLoaderHintFromPath(entryPath, loaderHints);
+
         if (entryPath.includes('mods/')) metadata.hasModsFolder = true;
         if (entryPath.includes('plugins/')) metadata.hasPluginsFolder = true;
         if (entryPath.includes('config/')) metadata.hasConfigFolder = true;
         if (entryPath.includes('overrides/')) metadata.hasOverridesFolder = true;
+
+        if (entryPath.startsWith('mods/') && entryPath.endsWith('.jar')) {
+          this.addLoaderHintFromPath(path.basename(entryPath), loaderHints);
+        }
 
         // Check for CurseForge manifest
         if (entryPath === 'manifest.json') {
@@ -275,7 +293,14 @@ class ModpackImportService {
             metadata.modrinthIndex = {
               name: index.name,
               versionId: index.versionId,
-              gameVersion: index.dependencies?.minecraft
+              gameVersion: index.dependencies?.minecraft,
+              dependencies: index.dependencies,
+              files: Array.isArray(index.files)
+                ? index.files.map(file => ({
+                  path: file.path,
+                  env: file.env
+                }))
+                : undefined
             };
           } catch (error) {
             logger.warn('Failed to parse modrinth.index.json');
@@ -283,6 +308,7 @@ class ModpackImportService {
         }
       });
 
+      metadata.loaderHints = Array.from(loaderHints);
       return metadata;
     } catch (error) {
       logger.error(`Failed to extract zip metadata: ${error.message}`);
@@ -293,25 +319,86 @@ class ModpackImportService {
   /**
    * Detect server type from metadata
    */
-  detectServerType(metadata) {
-    // Check manifest for mod loaders
-    if (metadata.manifest?.modLoaders) {
-      const loaders = metadata.manifest.modLoaders;
-      if (loaders.some(l => l.id?.includes('forge'))) return 'FORGE';
-      if (loaders.some(l => l.id?.includes('fabric'))) return 'FABRIC';
-    }
-
-    // Check Modrinth index
-    if (metadata.modrinthIndex) {
-      // Would check dependencies for loader type
-      return 'FABRIC'; // Default for Modrinth
+  detectServerType(metadata, preferredType = null) {
+    const loaderPreference = preferredType || this.getLoaderPreference(metadata);
+    if (loaderPreference) {
+      return loaderPreference;
     }
 
     // Check folder structure
     if (metadata.hasPluginsFolder) return 'PAPER';
-    if (metadata.hasModsFolder) return 'FABRIC'; // Default to Fabric
+    if (metadata.hasModsFolder) return 'FABRIC'; // Default to Fabric when mods folder is present
 
     return 'PAPER'; // Safe default
+  }
+
+  getLoaderPreference(metadata) {
+    const hints = new Set(metadata.loaderHints || []);
+
+    if (metadata.modrinthIndex?.dependencies) {
+      const deps = metadata.modrinthIndex.dependencies;
+      if (deps.neoforge) hints.add('NEOFORGE');
+      if (deps.forge) hints.add('FORGE');
+      if (deps.fabric) hints.add('FABRIC');
+    }
+
+    if (metadata.manifest?.modLoaders) {
+      metadata.manifest.modLoaders.forEach(loader => {
+        const id = (loader?.id || '').toLowerCase();
+        if (id.includes('neoforge')) {
+          hints.add('NEOFORGE');
+        } else if (id.includes('forge')) {
+          hints.add('FORGE');
+        } else if (id.includes('fabric')) {
+          hints.add('FABRIC');
+        }
+      });
+    }
+
+    if (metadata.modrinthIndex?.files) {
+      metadata.modrinthIndex.files.forEach(file => {
+        const filePath = file?.path?.toLowerCase();
+        if (!filePath) return;
+        if (filePath.includes('neoforge')) {
+          hints.add('NEOFORGE');
+        } else if (filePath.includes('fabric')) {
+          hints.add('FABRIC');
+        }
+      });
+    }
+
+    return this.prioritizeLoaderHint(hints);
+  }
+
+  prioritizeLoaderHint(hints) {
+    if (!hints || hints.size === 0) {
+      return null;
+    }
+
+    const priority = ['NEOFORGE', 'FORGE', 'FABRIC'];
+    return priority.find(type => hints.has(type)) || null;
+  }
+
+  addLoaderHintFromPath(entryPath, loaderHints) {
+    const lower = entryPath.toLowerCase();
+    if (lower.includes('neoforge')) {
+      loaderHints.add('NEOFORGE');
+    } else if (lower.includes('minecraftforge')) {
+      loaderHints.add('FORGE');
+    } else if (lower.includes('fabric')) {
+      loaderHints.add('FABRIC');
+    }
+  }
+
+  normalizeServerType(type) {
+    if (!type) {
+      return null;
+    }
+    const normalized = String(type).toUpperCase();
+    if (!this.supportedTypes.includes(normalized)) {
+      throw new ValidationError(`Unsupported server type: ${type}`);
+    }
+    return normalized;
   }
 
   /**
@@ -319,7 +406,8 @@ class ModpackImportService {
    */
   async saveToLibrary(tempFilePath, serverType, metadata) {
     try {
-      const typeDir = path.join(this.modpacksBasePath, serverType.toLowerCase());
+      const normalizedType = this.normalizeServerType(serverType || 'PAPER');
+      const typeDir = path.join(this.modpacksBasePath, normalizedType.toLowerCase());
 
       if (!fs.existsSync(typeDir)) {
         fs.mkdirSync(typeDir, { recursive: true });
@@ -339,7 +427,7 @@ class ModpackImportService {
       fs.writeFileSync(metadataPath, JSON.stringify({
         ...metadata,
         importedAt: new Date().toISOString(),
-        serverType,
+        serverType: normalizedType,
         fileName
       }, null, 2));
 

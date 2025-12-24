@@ -1,16 +1,54 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { serverApi } from '../services/api';
 import { SERVER_TYPE_OPTIONS } from '../utils/serverTypes';
 import './CreateServerForm.css';
+
+const PORT_RANGE_START = Number(import.meta.env.VITE_PORT_RANGE_START || 25565);
+const PORT_RANGE_END = Number(import.meta.env.VITE_PORT_RANGE_END || 25600);
+const DEFAULT_VERSION_OPTIONS = ['1.21.1', '1.21', '1.20.4', '1.20.1', '1.19.4', '1.18.2', '1.16.5', '1.12.2'];
+const DEFAULT_VERSION = DEFAULT_VERSION_OPTIONS[0];
+
+const compareMinecraftVersions = (a, b) => {
+  if (a === b) return 0;
+  const parseParts = (value) => String(value)
+    .split('.')
+    .map((part) => {
+      const numeric = parseInt(part.replace(/[^0-9]/g, ''), 10);
+      return Number.isNaN(numeric) ? null : numeric;
+    });
+  const aParts = parseParts(a);
+  const bParts = parseParts(b);
+  const length = Math.max(aParts.length, bParts.length);
+  for (let i = 0; i < length; i++) {
+    const aVal = aParts[i];
+    const bVal = bParts[i];
+    if (aVal === null || bVal === null) {
+      continue;
+    }
+    if (aVal !== bVal) {
+      return aVal - bVal;
+    }
+  }
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+};
+
+const sortVersionsDesc = (versions = []) => {
+  return versions
+    .map((version) => (typeof version === 'string' ? version.trim() : version))
+    .filter((version) => Boolean(version))
+    .map(String)
+    .sort((a, b) => compareMinecraftVersions(b, a));
+};
 
 function CreateServerForm({ onClose, onCreate }) {
   const [formData, setFormData] = useState({
     name: '',
     type: 'PAPER',
-    version: '1.20.4',
+    version: DEFAULT_VERSION,
     memory: '4G',
     cpuLimit: 2.0,
-    modpack: ''
+    modpack: '',
+    port: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -34,13 +72,38 @@ function CreateServerForm({ onClose, onCreate }) {
     fetchModpacks(formData.type);
   }, [formData.type, fetchModpacks]);
 
+  const selectedModpack = useMemo(
+    () => modpackOptions.find((pack) => pack.filename === formData.modpack),
+    [modpackOptions, formData.modpack]
+  );
+
+  const currentVersionOptions = useMemo(() => {
+    if (selectedModpack?.gameVersions?.length) {
+      return sortVersionsDesc(selectedModpack.gameVersions);
+    }
+    return DEFAULT_VERSION_OPTIONS;
+  }, [selectedModpack]);
+
+  useEffect(() => {
+    setFormData((prev) => {
+      if (currentVersionOptions.length === 0) {
+        return { ...prev, version: '' };
+      }
+      if (!prev.version || !currentVersionOptions.includes(prev.version)) {
+        return { ...prev, version: currentVersionOptions[0] };
+      }
+      return prev;
+    });
+  }, [currentVersionOptions]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'type') {
       setFormData((prev) => ({
         ...prev,
         type: value,
-        modpack: ''
+        modpack: '',
+        version: DEFAULT_VERSION
       }));
       return;
     }
@@ -58,6 +121,8 @@ function CreateServerForm({ onClose, onCreate }) {
     try {
       const payload = {
         ...formData,
+        cpuLimit: formData.cpuLimit === '' ? undefined : Number(formData.cpuLimit),
+        port: formData.port === '' ? undefined : Number(formData.port),
         modpack: formData.modpack || undefined
       };
       const newServer = await serverApi.createServer(payload);
@@ -143,16 +208,24 @@ function CreateServerForm({ onClose, onCreate }) {
 
           <div className="form-group">
             <label htmlFor="version">Minecraft Version *</label>
-            <input
-              type="text"
+            <select
               id="version"
               name="version"
               value={formData.version}
               onChange={handleChange}
               required
-              placeholder="1.20.4"
-            />
-            <small>Game version for the selected loader (e.g., 1.20.4, latest)</small>
+            >
+              {currentVersionOptions.map((version) => (
+                <option key={version} value={version}>
+                  {version}
+                </option>
+              ))}
+            </select>
+            <small>
+              {selectedModpack?.gameVersions?.length
+                ? 'Versions provided by the selected modpack (newest first)'
+                : 'Common Minecraft versions (select the one your mods require)'}
+            </small>
           </div>
 
           <div className="form-group">
@@ -189,6 +262,23 @@ function CreateServerForm({ onClose, onCreate }) {
               placeholder="2.0"
             />
             <small>Number of CPU cores (0.5 - 8.0)</small>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="port">Server Port</label>
+            <input
+              type="number"
+              id="port"
+              name="port"
+              value={formData.port}
+              onChange={handleChange}
+              min={PORT_RANGE_START}
+              max={PORT_RANGE_END}
+              placeholder={`${PORT_RANGE_START}`}
+            />
+            <small>
+              {`Leave blank to auto-assign the next available port (${PORT_RANGE_START}-${PORT_RANGE_END} by default)`}
+            </small>
           </div>
 
           {error && (

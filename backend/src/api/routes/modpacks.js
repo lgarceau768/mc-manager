@@ -62,6 +62,15 @@ router.get('/imported/:type', asyncHandler(async (req, res) => {
  * Get saved modpacks for a type
  * GET /api/modpacks/:type
  */
+router.get('/', async (req, res, next) => {
+  try {
+    const modpacks = serverService.listAllSavedModpacks();
+    res.json(modpacks);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/:type', async (req, res, next) => {
   try {
     const { type } = req.params;
@@ -82,6 +91,16 @@ router.post('/:type', upload.single('file'), async (req, res, next) => {
       throw new ValidationError('Modpack file is required');
     }
     const { type } = req.params;
+    const normalizedType = modpackImportService.normalizeServerType(type);
+    const metadata = modpackImportService.extractZipMetadata(req.file.path);
+    const loaderPreference = modpackImportService.getLoaderPreference(metadata);
+
+    if (loaderPreference && loaderPreference !== normalizedType) {
+      throw new ValidationError(
+        `Uploaded modpack targets ${loaderPreference}, but you selected ${normalizedType}.`
+      );
+    }
+
     const saved = serverService.saveModpackFile(type, req.file);
     res.status(201).json(saved);
   } catch (error) {
