@@ -1,0 +1,154 @@
+.server-console {
+  background: #1e1e1e;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 500px;
+}
+
+.console-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #2d2d2d;
+  border-bottom: 1px solid #3e3e3e;
+}
+
+.console-header h3 {
+  color: #e0e0e0;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.connection-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.status-connected {
+  background-color: #28a745;
+  color: white;
+}
+
+.status-disconnected {
+  background-color: #dc3545;
+  color: white;
+}
+
+.console-logs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.console-empty {
+  color: #6c757d;
+  text-align: center;
+  padding: 2rem;
+}
+
+.log-entry {
+  margin-bottom: 0.25rem;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.log-timestamp {
+  color: #6c757d;
+  flex-shrink: 0;
+}
+
+.log-message {
+  color: #e0e0e0;
+  word-break: break-all;
+}
+
+.log-system .log-message {
+  color: #ffc107;
+}
+
+.log-error .log-message {
+  color: #dc3545;
+}
+
+.log-command .log-message {
+  color: #17a2b8;
+  font-weight: 500;
+}
+
+.log-status .log-message {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.console-input {
+  display: flex;
+  padding: 1rem;
+  background-color: #2d2d2d;
+  border-top: 1px solid #3e3e3e;
+}
+
+.console-input input {
+  flex: 1;
+  padding: 0.5rem;
+  background-color: #1e1e1e;
+  border: 1px solid #3e3e3e;
+  border-radius: 4px 0 0 4px;
+  color: #e0e0e0;
+  font-family: 'Courier New', monospace;
+}
+
+.console-input input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.console-input input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.console-input button {
+  padding: 0.5rem 1rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.console-input button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.console-input button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Scrollbar styling for console logs */
+.console-logs::-webkit-scrollbar {
+  width: 8px;
+}
+
+.console-logs::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.console-logs::-webkit-scrollbar-thumb {
+  background: #3e3e3e;
+  border-radius: 4px;
+}
+
+.console-logs::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

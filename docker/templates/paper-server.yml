@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  minecraft:
+    image: itzg/minecraft-server:latest
+    container_name: mc-{{SERVER_ID}}
+    environment:
+      EULA: "TRUE"
+      TYPE: "PAPER"
+      VERSION: "{{VERSION}}"
+      MEMORY: "{{MEMORY}}"
+      SERVER_NAME: "{{NAME}}"
+      ONLINE_MODE: "TRUE"
+    ports:
+      - "{{PORT}}:25565"
+    volumes:
+      - "{{VOLUME_PATH}}:/data"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: {{MEMORY_LIMIT}}
+          cpus: "{{CPU_LIMIT}}"

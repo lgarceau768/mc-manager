@@ -1,0 +1,77 @@
+.server-status {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.server-status h3 {
+  margin: 0 0 1.5rem 0;
+  color: #2c3e50;
+  font-size: 1.25rem;
+}
+
+.server-status.loading,
+.server-status.error,
+.server-status.empty {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+
+.server-status.error {
+  color: #dc3545;
+}
+
+.stats-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.stat-card {
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #6c757d;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  color: #2c3e50;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.stat-bar {
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+.stat-bar-fill.cpu {
+  background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
+}
+
+.stat-bar-fill.memory {
+  background: linear-gradient(90deg, #007bff, #17a2b8);
+}
+
+.stat-detail {
+  font-size: 0.875rem;
+  color: #6c757d;
+  text-align: right;
+}
