@@ -623,8 +623,19 @@ class ServerService {
       try {
         const containerIP = await dockerService.getContainerIP(server.container_id);
         if (containerIP) {
-          host = containerIP;
-          logger.debug(`Using container IP ${containerIP} for server ${server.id}`);
+          // Check if container IP is accessible from local network
+          // Docker bridge IPs (172.16-31.x.x) are not accessible externally
+          // OrbStack/other setups may use 192.168.x.x or 10.x.x.x which ARE accessible
+          const isDockerBridgeIP = this.isDockerBridgeIP(containerIP);
+
+          if (!isDockerBridgeIP) {
+            // Container IP is accessible (e.g., OrbStack's 192.168.x.x)
+            host = containerIP;
+            logger.debug(`Using accessible container IP ${containerIP} for server ${server.id}`);
+          } else {
+            // Container IP is Docker bridge (172.x.x.x), use host IP instead
+            logger.debug(`Container IP ${containerIP} is Docker bridge, using host ${host} for server ${server.id}`);
+          }
         }
       } catch (error) {
         logger.warn(`Failed to get container IP for ${server.id}: ${error.message}`);
@@ -642,6 +653,28 @@ class ServerService {
         address
       }
     };
+  }
+
+  /**
+   * Check if an IP address is in the Docker bridge range (172.16-31.x.x)
+   * These IPs are not accessible from outside the Docker host
+   */
+  isDockerBridgeIP(ip) {
+    if (!ip) return false;
+
+    const parts = ip.split('.');
+    if (parts.length !== 4) return false;
+
+    const first = parseInt(parts[0], 10);
+    const second = parseInt(parts[1], 10);
+
+    // Docker bridge networks use 172.16.0.0/12 (172.16.0.0 - 172.31.255.255)
+    // Also check for 172.17.0.0/16 which is the default Docker bridge
+    if (first === 172 && second >= 16 && second <= 31) {
+      return true;
+    }
+
+    return false;
   }
 
   /**

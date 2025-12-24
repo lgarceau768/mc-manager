@@ -17,7 +17,7 @@ services:
       - MODPACKS_PATH=/app/data/modpacks
       - BACKUPS_PATH=/app/data/backups
       - DOCKER_SOCKET=/var/run/docker.sock
-      - PUBLIC_SERVER_HOST=craft.bean
+      - PUBLIC_SERVER_HOST=${PUBLIC_SERVER_HOST:-craft.bean}
       - PORT_RANGE_START=25565
       - PORT_RANGE_END=25600
       - LOG_LEVEL=info

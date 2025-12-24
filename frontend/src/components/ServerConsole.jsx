@@ -8,6 +8,7 @@ function ServerConsole({ serverId }) {
   const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [refreshCounter, setRefreshCounter] = useState(0);
   const logsEndRef = useRef(null);
+  const logsContainerRef = useRef(null);
   const wsClient = useRef(null);
 
   useEffect(() => {
@@ -27,8 +28,10 @@ function ServerConsole({ serverId }) {
   }, [serverId, refreshCounter]);
 
   useEffect(() => {
-    // Auto-scroll to bottom when new logs arrive
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Auto-scroll to bottom when new logs arrive (only scroll the console container, not the page)
+    if (logsContainerRef.current) {
+      logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
+    }
   }, [logs]);
 
   const handleWebSocketMessage = (message) => {
@@ -167,7 +170,7 @@ function ServerConsole({ serverId }) {
         </div>
       </div>
 
-      <div className="console-logs">
+      <div className="console-logs" ref={logsContainerRef}>
         {logs.length === 0 ? (
           <div className="console-empty">No logs yet...</div>
         ) : (
