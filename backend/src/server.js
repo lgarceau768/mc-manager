@@ -132,11 +132,11 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Start server
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   logger.info(`Server running on port ${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`WebSocket server ready at ws://localhost:${PORT}/ws/console`);
-  logger.info(`API endpoints available at http://localhost:${PORT}/api`);
+  logger.info(`WebSocket server ready at ws://0.0.0.0:${PORT}/ws/console`);
+  logger.info(`API endpoints available at http://0.0.0.0:${PORT}/api`);
 });
 
 export default app;
