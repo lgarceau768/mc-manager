@@ -7,6 +7,7 @@ import ModsTab from './tabs/ModsTab';
 import PlayersTab from './tabs/PlayersTab';
 import SettingsTab from './tabs/SettingsTab';
 import BackupsTab from './tabs/BackupsTab';
+import NotificationsTab from './tabs/NotificationsTab';
 import { serverApi, playerApi } from '../services/api';
 import './ServerDetails.css';
 
@@ -16,7 +17,8 @@ const TABS = [
   { id: 'mods', label: 'Mods', icon: '\uD83D\uDCE6' },
   { id: 'players', label: 'Players', icon: '\uD83D\uDC65' },
   { id: 'settings', label: 'Settings', icon: '\u2699\uFE0F' },
-  { id: 'backups', label: 'Backups', icon: '\uD83D\uDCBE' }
+  { id: 'backups', label: 'Backups', icon: '\uD83D\uDCBE' },
+  { id: 'notifications', label: 'Notifications', icon: '\uD83D\uDD14' }
 ];
 
 function ServerDetails() {
@@ -126,6 +128,9 @@ function ServerDetails() {
       case 'starting':
       case 'stopping':
         return 'status-transitioning';
+      case 'error':
+      case 'unhealthy':
+        return 'status-error';
       default:
         return '';
     }
@@ -171,12 +176,12 @@ function ServerDetails() {
           </div>
 
           <div className="header-actions">
-            {server.status === 'stopped' && (
+            {(server.status === 'stopped' || server.status === 'error') && (
               <button
                 className="btn btn-success"
                 onClick={() => handleAction('start')}
               >
-                Start Server
+                {server.status === 'error' ? 'Retry Start' : 'Start Server'}
               </button>
             )}
 
@@ -237,6 +242,10 @@ function ServerDetails() {
 
         {activeTab === 'backups' && (
           <BackupsTab serverId={server.id} serverStatus={server.status} />
+        )}
+
+        {activeTab === 'notifications' && (
+          <NotificationsTab serverId={server.id} />
         )}
       </div>
     </div>

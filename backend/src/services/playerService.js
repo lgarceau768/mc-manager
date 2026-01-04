@@ -143,6 +143,72 @@ class PlayerService {
     const output = await dockerService.executeCommand(server.container_id, command);
     return output;
   }
+
+  /**
+   * Execute a player action (kick, ban, op, deop, tp)
+   * @param {string} serverId - Server ID
+   * @param {string} playerName - Player name
+   * @param {string} action - Action to execute
+   * @returns {Object} Result of the action
+   */
+  async executePlayerAction(serverId, playerName, action) {
+    const server = Server.findById(serverId);
+    if (!server) {
+      throw new NotFoundError(`Server not found: ${serverId}`);
+    }
+
+    if (server.status !== 'running') {
+      throw new ValidationError('Server is not running');
+    }
+
+    if (!server.container_id) {
+      throw new ValidationError('Server has no associated container');
+    }
+
+    // Validate player name (alphanumeric and underscores only, 1-16 chars)
+    if (!/^[a-zA-Z0-9_]{1,16}$/.test(playerName)) {
+      throw new ValidationError('Invalid player name');
+    }
+
+    // Map action to Minecraft command
+    const actionCommands = {
+      kick: `kick ${playerName}`,
+      ban: `ban ${playerName}`,
+      op: `op ${playerName}`,
+      deop: `deop ${playerName}`,
+      tp: `tp @a ${playerName}`  // Teleport all players to target player
+    };
+
+    const command = actionCommands[action];
+    if (!command) {
+      throw new ValidationError(`Invalid action: ${action}. Allowed: ${Object.keys(actionCommands).join(', ')}`);
+    }
+
+    try {
+      const output = await dockerService.executeCommand(server.container_id, command);
+      logger.info(`Executed player action ${action} on ${playerName} for server ${serverId}`);
+
+      // Generate user-friendly message
+      const messages = {
+        kick: `Player ${playerName} has been kicked from the server`,
+        ban: `Player ${playerName} has been banned from the server`,
+        op: `Player ${playerName} is now an operator`,
+        deop: `Player ${playerName} is no longer an operator`,
+        tp: `Teleported all players to ${playerName}`
+      };
+
+      return {
+        success: true,
+        action,
+        player: playerName,
+        message: messages[action],
+        output: output.trim()
+      };
+    } catch (error) {
+      logger.error(`Failed to execute player action ${action} on ${playerName}: ${error.message}`);
+      throw new ValidationError(`Failed to execute ${action}: ${error.message}`);
+    }
+  }
 }
 
 // Export singleton instance

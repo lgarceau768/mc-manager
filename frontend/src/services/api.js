@@ -557,6 +557,45 @@ export const playerApi = {
   getOnlinePlayers: async (serverId) => {
     const response = await api.get(`/servers/${serverId}/players`);
     return response.data;
+  },
+
+  /**
+   * Execute a player action (kick, ban, op, etc.)
+   */
+  executePlayerAction: async (serverId, action, playerName) => {
+    const response = await api.post(`/servers/${serverId}/players/${encodeURIComponent(playerName)}/action`, {
+      action
+    });
+    return response.data;
+  }
+};
+
+/**
+ * Notification API methods
+ */
+export const notificationApi = {
+  /**
+   * Get notification settings for a server
+   */
+  getSettings: async (serverId) => {
+    const response = await api.get(`/servers/${serverId}/notifications`);
+    return response.data;
+  },
+
+  /**
+   * Update notification settings for a server
+   */
+  updateSettings: async (serverId, settings) => {
+    const response = await api.put(`/servers/${serverId}/notifications`, settings);
+    return response.data;
+  },
+
+  /**
+   * Test the Discord webhook
+   */
+  testWebhook: async (serverId, webhookUrl) => {
+    const response = await api.post(`/servers/${serverId}/notifications/test`, { webhookUrl });
+    return response.data;
   }
 };
 

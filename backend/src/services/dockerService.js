@@ -292,6 +292,75 @@ class DockerService {
   }
 
   /**
+   * Get detailed container status including error states
+   */
+  async getContainerStatus(containerId) {
+    try {
+      const container = this.docker.getContainer(containerId);
+      const info = await container.inspect();
+      const state = info.State;
+
+      let status = 'stopped';
+      let error = null;
+      let exitCode = null;
+      let health = null;
+
+      if (state.Running) {
+        status = 'running';
+        // Check health status if available
+        if (state.Health) {
+          health = state.Health.Status; // 'healthy', 'unhealthy', 'starting'
+          if (state.Health.Status === 'unhealthy') {
+            status = 'unhealthy';
+            // Get last health check log
+            const logs = state.Health.Log || [];
+            if (logs.length > 0) {
+              const lastLog = logs[logs.length - 1];
+              error = lastLog.Output?.trim() || 'Health check failed';
+            }
+          }
+        }
+      } else if (state.Restarting) {
+        status = 'restarting';
+      } else if (state.Dead) {
+        status = 'error';
+        error = 'Container is dead';
+        exitCode = state.ExitCode;
+      } else if (state.ExitCode !== 0) {
+        status = 'error';
+        exitCode = state.ExitCode;
+        error = state.Error || `Container exited with code ${state.ExitCode}`;
+      } else if (state.OOMKilled) {
+        status = 'error';
+        error = 'Container was killed due to out of memory';
+        exitCode = state.ExitCode;
+      }
+
+      return {
+        status,
+        running: state.Running,
+        error,
+        exitCode,
+        health,
+        startedAt: state.StartedAt,
+        finishedAt: state.FinishedAt,
+        restartCount: info.RestartCount || 0
+      };
+    } catch (error) {
+      if (error.statusCode === 404) {
+        return {
+          status: 'stopped',
+          running: false,
+          error: null,
+          exitCode: null,
+          health: null
+        };
+      }
+      throw new DockerError(`Failed to get container status: ${error.message}`, error);
+    }
+  }
+
+  /**
    * Get container's IP address
    */
   async getContainerIP(containerId) {

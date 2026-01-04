@@ -12,6 +12,9 @@ function OverviewTab({ server, onAction }) {
       case 'starting':
       case 'stopping':
         return 'status-transitioning';
+      case 'error':
+      case 'unhealthy':
+        return 'status-error';
       default:
         return '';
     }
@@ -61,15 +64,50 @@ function OverviewTab({ server, onAction }) {
         <ServerStatus serverId={server.id} />
       </div>
 
+      {server.containerStatus?.error && (
+        <div className="container-error-card">
+          <h3>Container Error</h3>
+          <div className="error-details">
+            <div className="error-message">
+              <span className="error-icon">⚠</span>
+              {server.containerStatus.error}
+            </div>
+            {server.containerStatus?.exitCode !== null && (
+              <div className="error-info">
+                <span className="label">Exit Code:</span>
+                <span className="value">{server.containerStatus.exitCode}</span>
+              </div>
+            )}
+            {server.containerStatus?.restartCount > 0 && (
+              <div className="error-info">
+                <span className="label">Restart Count:</span>
+                <span className="value">{server.containerStatus.restartCount}</span>
+              </div>
+            )}
+            {server.containerStatus?.finishedAt && (
+              <div className="error-info">
+                <span className="label">Failed At:</span>
+                <span className="value">
+                  {new Date(server.containerStatus.finishedAt).toLocaleString()}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="error-hint">
+            Check the Console tab for detailed logs. The server can be restarted using the button below.
+          </div>
+        </div>
+      )}
+
       <div className="quick-actions">
         <h3>Quick Actions</h3>
         <div className="action-buttons">
-          {server.status === 'stopped' && (
+          {(server.status === 'stopped' || server.status === 'error') && (
             <button
               className="btn btn-success"
               onClick={() => onAction('start')}
             >
-              Start Server
+              {server.status === 'error' ? 'Retry Start' : 'Start Server'}
             </button>
           )}
 

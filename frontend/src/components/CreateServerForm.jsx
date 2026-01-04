@@ -128,6 +128,7 @@ function CreateServerForm({ onClose, onCreate }) {
 
   const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);
+    setUserOverrides({}); // Reset overrides when selecting new template
 
     // Apply all template settings to form
     const updates = {};
@@ -156,6 +157,11 @@ function CreateServerForm({ onClose, onCreate }) {
       updates.version = template.minecraftVersion;
     }
 
+    // Apply CPU limit if template specifies it
+    if (template.cpuLimit) {
+      updates.cpuLimit = parseFloat(template.cpuLimit);
+    }
+
     if (Object.keys(updates).length > 0) {
       setFormData((prev) => ({
         ...prev,
@@ -164,15 +170,34 @@ function CreateServerForm({ onClose, onCreate }) {
     }
   };
 
-  // Track which fields were set by template
+  // Track which fields were set by template (and not yet overridden by user)
+  const [userOverrides, setUserOverrides] = useState({});
+
   const templateFields = useMemo(() => {
     if (!selectedTemplate) return {};
     return {
-      type: !!selectedTemplate.serverType,
-      memory: !!selectedTemplate.memory,
-      version: !!selectedTemplate.minecraftVersion
+      type: !!selectedTemplate.serverType && !userOverrides.type,
+      memory: !!selectedTemplate.memory && !userOverrides.memory,
+      version: !!selectedTemplate.minecraftVersion && !userOverrides.version,
+      cpuLimit: !!selectedTemplate.cpuLimit && !userOverrides.cpuLimit
     };
-  }, [selectedTemplate]);
+  }, [selectedTemplate, userOverrides]);
+
+  // Warn user when they're about to override a template value
+  const handleFieldChange = (fieldName, value, originalHandler) => {
+    const templateHasField = selectedTemplate && (
+      (fieldName === 'type' && selectedTemplate.serverType) ||
+      (fieldName === 'memory' && selectedTemplate.memory) ||
+      (fieldName === 'version' && selectedTemplate.minecraftVersion) ||
+      (fieldName === 'cpuLimit' && selectedTemplate.cpuLimit)
+    );
+
+    if (templateHasField && !userOverrides[fieldName]) {
+      setUserOverrides(prev => ({ ...prev, [fieldName]: true }));
+    }
+
+    originalHandler(value);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -331,21 +356,28 @@ function CreateServerForm({ onClose, onCreate }) {
             </small>
           </div>
 
-          <div className={`form-group ${templateFields.memory ? 'from-template' : ''}`}>
+          <div className={`form-group ${templateFields.memory ? 'from-template' : ''} ${userOverrides.memory ? 'user-override' : ''}`}>
             <label htmlFor="memory">
               Memory Allocation *
               {templateFields.memory && <span className="template-badge">from template</span>}
+              {userOverrides.memory && selectedTemplate?.memory && (
+                <span className="override-badge">overridden</span>
+              )}
             </label>
             <select
               id="memory"
               name="memory"
               value={formData.memory}
-              onChange={handleChange}
+              onChange={(e) => {
+                handleFieldChange('memory', e.target.value, () => {
+                  setFormData(prev => ({ ...prev, memory: e.target.value }));
+                });
+              }}
               required
             >
               <option value="1G">1 GB</option>
               <option value="2G">2 GB</option>
-              <option value="4G">4 GB{!templateFields.memory ? ' (Recommended)' : ''}</option>
+              <option value="4G">4 GB{!templateFields.memory && !userOverrides.memory ? ' (Recommended)' : ''}</option>
               <option value="6G">6 GB</option>
               <option value="8G">8 GB</option>
               <option value="12G">12 GB</option>
@@ -354,24 +386,47 @@ function CreateServerForm({ onClose, onCreate }) {
             <small>
               {templateFields.memory
                 ? `Set by template: ${selectedTemplate?.name} (${selectedTemplate?.memory})`
-                : 'RAM allocated to the server'}
+                : userOverrides.memory && selectedTemplate?.memory
+                  ? `Template recommended: ${selectedTemplate.memory}`
+                  : 'RAM allocated to the server'}
             </small>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="cpuLimit">CPU Limit (cores)</label>
-            <input
-              type="number"
+          <div className={`form-group ${templateFields.cpuLimit ? 'from-template' : ''} ${userOverrides.cpuLimit ? 'user-override' : ''}`}>
+            <label htmlFor="cpuLimit">
+              CPU Limit (cores)
+              {templateFields.cpuLimit && <span className="template-badge">from template</span>}
+              {userOverrides.cpuLimit && selectedTemplate?.cpuLimit && (
+                <span className="override-badge">overridden</span>
+              )}
+            </label>
+            <select
               id="cpuLimit"
               name="cpuLimit"
               value={formData.cpuLimit}
-              onChange={handleChange}
-              min={0.5}
-              max={8}
-              step={0.5}
-              placeholder="2.0"
-            />
-            <small>Number of CPU cores (0.5 - 8.0)</small>
+              onChange={(e) => {
+                const value = parseFloat(e.target.value);
+                handleFieldChange('cpuLimit', value, () => {
+                  setFormData(prev => ({ ...prev, cpuLimit: value }));
+                });
+              }}
+            >
+              <option value={0.5}>0.5 cores</option>
+              <option value={1}>1 core</option>
+              <option value={1.5}>1.5 cores</option>
+              <option value={2}>2 cores</option>
+              <option value={3}>3 cores</option>
+              <option value={4}>4 cores</option>
+              <option value={6}>6 cores</option>
+              <option value={8}>8 cores</option>
+            </select>
+            <small>
+              {templateFields.cpuLimit
+                ? `Set by template: ${selectedTemplate?.name}`
+                : userOverrides.cpuLimit && selectedTemplate?.cpuLimit
+                  ? `Template recommended: ${selectedTemplate.cpuLimit} cores`
+                  : 'Number of CPU cores allocated to the server'}
+            </small>
           </div>
 
           <div className="form-group">

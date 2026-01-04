@@ -310,18 +310,43 @@ class ServerService {
       }
       const settings = this.getServerSettingsData(server);
 
-      // If running, fetch stats
-      if (server.status === 'running' && server.container_id) {
+      // Get detailed container status if container exists
+      let containerStatus = null;
+      let stats = null;
+
+      if (server.container_id) {
         try {
-          const stats = await dockerService.getContainerStats(server.container_id);
-          return await this.withConnectionInfo({ ...server, stats, settings });
+          containerStatus = await dockerService.getContainerStatus(server.container_id);
+
+          // Sync database status with actual container status if needed
+          if (containerStatus.status === 'error' && server.status !== 'error') {
+            Server.update(serverId, { status: 'error' });
+          } else if (containerStatus.running && server.status === 'stopped') {
+            Server.update(serverId, { status: 'running' });
+          } else if (!containerStatus.running && server.status === 'running') {
+            Server.update(serverId, { status: 'stopped' });
+          }
+
+          // Get stats if container is running
+          if (containerStatus.running) {
+            try {
+              stats = await dockerService.getContainerStats(server.container_id);
+            } catch (statsError) {
+              logger.warn(`Failed to get stats for server ${serverId}: ${statsError.message}`);
+            }
+          }
         } catch (error) {
-          logger.warn(`Failed to get stats for server ${serverId}: ${error.message}`);
-          return await this.withConnectionInfo({ ...server, settings });
+          logger.warn(`Failed to get container status for server ${serverId}: ${error.message}`);
         }
       }
 
-      return await this.withConnectionInfo({ ...server, settings });
+      const updatedServer = Server.findById(serverId);
+      return await this.withConnectionInfo({
+        ...updatedServer,
+        stats,
+        settings,
+        containerStatus
+      });
     } catch (error) {
       logger.error(`Failed to get server details: ${error.message}`);
       throw error;
@@ -335,19 +360,42 @@ class ServerService {
     try {
       const servers = Server.findAll();
 
-      // Fetch stats for running servers
+      // Fetch stats and container status for all servers
       const serversWithStats = await Promise.all(
         servers.map(async (server) => {
-          if (server.status === 'running' && server.container_id) {
+          let containerStatus = null;
+          let stats = null;
+
+          if (server.container_id) {
             try {
-              const stats = await dockerService.getContainerStats(server.container_id);
-              return await this.withConnectionInfo({ ...server, stats });
+              containerStatus = await dockerService.getContainerStatus(server.container_id);
+
+              // Sync database status with actual container status if needed
+              if (containerStatus.status === 'error' && server.status !== 'error') {
+                Server.update(server.id, { status: 'error' });
+                server.status = 'error';
+              } else if (containerStatus.running && server.status === 'stopped') {
+                Server.update(server.id, { status: 'running' });
+                server.status = 'running';
+              } else if (!containerStatus.running && server.status === 'running') {
+                Server.update(server.id, { status: 'stopped' });
+                server.status = 'stopped';
+              }
+
+              // Get stats if container is running
+              if (containerStatus.running) {
+                try {
+                  stats = await dockerService.getContainerStats(server.container_id);
+                } catch (statsError) {
+                  logger.warn(`Failed to get stats for server ${server.id}: ${statsError.message}`);
+                }
+              }
             } catch (error) {
-              logger.warn(`Failed to get stats for server ${server.id}: ${error.message}`);
-              return await this.withConnectionInfo(server);
+              logger.warn(`Failed to get container status for server ${server.id}: ${error.message}`);
             }
           }
-          return await this.withConnectionInfo(server);
+
+          return await this.withConnectionInfo({ ...server, stats, containerStatus });
         })
       );
 

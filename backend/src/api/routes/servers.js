@@ -2,6 +2,7 @@ import express from 'express';
 import os from 'os';
 import multer from 'multer';
 import serverService from '../../services/serverService.js';
+import playerService from '../../services/playerService.js';
 import { validate, createServerSchema, updateServerSettingsSchema, updateServerResourcesSchema } from '../../utils/validation.js';
 import logger from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
@@ -294,6 +295,28 @@ router.post('/:id/apply-modpack', async (req, res, next) => {
     const result = await serverService.applyModpackToServer(id, modpackFilename);
 
     logger.info(`Modpack applied to server via API: ${id}`);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/servers/:id/players/:playerName/action
+ * Execute a player action (kick, ban, op, deop, tp)
+ */
+router.post('/:id/players/:playerName/action', async (req, res, next) => {
+  try {
+    const { id, playerName } = req.params;
+    const { action } = req.body;
+
+    if (!action) {
+      throw new ValidationError('action is required');
+    }
+
+    const result = await playerService.executePlayerAction(id, decodeURIComponent(playerName), action);
+
+    logger.info(`Player action ${action} executed on ${playerName} for server ${id}`);
     res.json(result);
   } catch (error) {
     next(error);
