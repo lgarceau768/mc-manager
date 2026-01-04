@@ -101,9 +101,32 @@
   opacity: 0.6;
 }
 
+.th-icon {
+  width: 40px;
+}
+
+.mod-icon-cell {
+  width: 40px;
+  padding-right: 0 !important;
+}
+
 .mod-name {
   font-weight: 500;
   max-width: 250px;
+}
+
+.mod-name span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mod-authors {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-secondary, #64748b);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

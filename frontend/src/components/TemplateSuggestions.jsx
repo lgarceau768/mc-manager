@@ -86,8 +86,11 @@ function TemplateSuggestions({ serverType, modpackUrl, onSelect }) {
               {template.matchReason && (
                 <span className="match-reason">{template.matchReason}</span>
               )}
+              {template.minecraftVersion && (
+                <span className="version-hint">MC {template.minecraftVersion}</span>
+              )}
               {template.memory && (
-                <span className="memory-hint">Memory: {template.memory}</span>
+                <span className="memory-hint">{template.memory} RAM</span>
               )}
             </div>
 

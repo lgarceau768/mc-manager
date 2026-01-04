@@ -553,6 +553,101 @@ class ServerService {
   }
 
   /**
+   * Update server resource allocation (memory, CPU)
+   * Requires server restart to take effect
+   */
+  async updateServerResources(serverId, resources) {
+    const server = Server.findById(serverId);
+    if (!server) {
+      throw new NotFoundError(`Server not found: ${serverId}`);
+    }
+
+    const updates = {};
+
+    if (resources.memory !== undefined) {
+      updates.memory = resources.memory;
+    }
+
+    if (resources.cpuLimit !== undefined) {
+      updates.cpu_limit = resources.cpuLimit;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return await this.getServerDetails(serverId);
+    }
+
+    // Update in database
+    Server.update(serverId, updates);
+
+    // Update docker-compose.yml
+    const composePath = path.join(server.volume_path, 'docker-compose.yml');
+    if (fs.existsSync(composePath)) {
+      try {
+        const composeContent = fs.readFileSync(composePath, 'utf8');
+        const compose = YAML.parse(composeContent);
+
+        const serviceName = Object.keys(compose.services)[0];
+        const service = compose.services[serviceName];
+
+        if (resources.memory) {
+          // Update MEMORY environment variable
+          if (service.environment) {
+            if (Array.isArray(service.environment)) {
+              const memIdx = service.environment.findIndex(e =>
+                typeof e === 'string' && e.startsWith('MEMORY=')
+              );
+              if (memIdx >= 0) {
+                service.environment[memIdx] = `MEMORY=${resources.memory}`;
+              } else {
+                service.environment.push(`MEMORY=${resources.memory}`);
+              }
+            } else {
+              service.environment.MEMORY = resources.memory;
+            }
+          }
+
+          // Update deploy resources
+          if (!service.deploy) service.deploy = {};
+          if (!service.deploy.resources) service.deploy.resources = {};
+          if (!service.deploy.resources.limits) service.deploy.resources.limits = {};
+
+          // Set memory limit slightly higher than heap
+          const memMatch = resources.memory.match(/^(\d+)([GM])$/i);
+          if (memMatch) {
+            const amount = parseInt(memMatch[1]);
+            const unit = memMatch[2].toUpperCase();
+            // Add 1G buffer for non-heap memory
+            const limitAmount = unit === 'G' ? amount + 1 : Math.ceil(amount / 1024) + 1;
+            service.deploy.resources.limits.memory = `${limitAmount}G`;
+          }
+        }
+
+        if (resources.cpuLimit) {
+          if (!service.deploy) service.deploy = {};
+          if (!service.deploy.resources) service.deploy.resources = {};
+          if (!service.deploy.resources.limits) service.deploy.resources.limits = {};
+          service.deploy.resources.limits.cpus = String(resources.cpuLimit);
+        }
+
+        fs.writeFileSync(composePath, YAML.stringify(compose));
+        logger.info(`Updated docker-compose.yml for server ${serverId}`);
+      } catch (error) {
+        logger.warn(`Failed to update docker-compose.yml: ${error.message}`);
+      }
+    }
+
+    // Return updated server details
+    const updatedServer = await this.getServerDetails(serverId);
+
+    // Add a flag indicating restart is needed
+    if (server.status === 'running') {
+      updatedServer.restartRequired = true;
+    }
+
+    return updatedServer;
+  }
+
+  /**
    * Update server icon (server-icon.png)
    */
   async updateServerIcon(serverId, file) {

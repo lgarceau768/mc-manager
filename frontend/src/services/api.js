@@ -199,6 +199,14 @@ export const serverApi = {
   },
 
   /**
+   * Update server resource allocation (memory, CPU)
+   */
+  updateServerResources: async (id, resources) => {
+    const response = await api.patch(`/servers/${id}/resources`, resources);
+    return response.data;
+  },
+
+  /**
    * List files for a server
    */
   listFiles: async (id, path = '') => {
@@ -467,6 +475,20 @@ export const modApi = {
   deleteMod: async (serverId, filename) => {
     const response = await api.delete(`/servers/${serverId}/mods/${encodeURIComponent(filename)}`);
     return response.data;
+  },
+
+  /**
+   * Get download URL for a mod
+   */
+  getModDownloadUrl: (serverId, filename) => {
+    return `${API_BASE_URL}/servers/${serverId}/mods/${encodeURIComponent(filename)}/download`;
+  },
+
+  /**
+   * Get icon URL for a mod
+   */
+  getModIconUrl: (serverId, filename) => {
+    return `${API_BASE_URL}/servers/${serverId}/mods/${encodeURIComponent(filename)}/icon`;
   }
 };
 

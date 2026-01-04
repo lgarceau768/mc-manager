@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'fs';
 import modSearchService from '../../services/modSearchService.js';
 import modManagementService from '../../services/modManagementService.js';
 import playerService from '../../services/playerService.js';
@@ -177,6 +178,46 @@ serverModsRouter.delete('/:filename', async (req, res, next) => {
 
     logger.info(`Mod deleted via API: ${filename} from server ${id}`);
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/servers/:id/mods/:filename/download
+ * Download a mod JAR file
+ */
+serverModsRouter.get('/:filename/download', async (req, res, next) => {
+  try {
+    const { id, filename } = req.params;
+    const { filePath, safeFilename } = await modManagementService.getModFilePath(id, decodeURIComponent(filename));
+
+    res.setHeader('Content-Type', 'application/java-archive');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/servers/:id/mods/:filename/icon
+ * Get mod icon if available (extracted from JAR)
+ */
+serverModsRouter.get('/:filename/icon', async (req, res, next) => {
+  try {
+    const { id, filename } = req.params;
+    const iconData = await modManagementService.getModIcon(id, decodeURIComponent(filename));
+
+    if (!iconData) {
+      return res.status(404).json({ error: { message: 'No icon available', code: 'NotFound' } });
+    }
+
+    res.setHeader('Content-Type', iconData.mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+    res.send(iconData.buffer);
   } catch (error) {
     next(error);
   }

@@ -82,11 +82,19 @@ function CreateServerForm({ onClose, onCreate }) {
   );
 
   const currentVersionOptions = useMemo(() => {
+    // If modpack specifies versions, use those
     if (selectedModpack?.gameVersions?.length) {
       return sortVersionsDesc(selectedModpack.gameVersions);
     }
+    // If template specifies a version, include it in options
+    if (selectedTemplate?.minecraftVersion) {
+      const templateVersion = selectedTemplate.minecraftVersion;
+      if (!DEFAULT_VERSION_OPTIONS.includes(templateVersion)) {
+        return sortVersionsDesc([templateVersion, ...DEFAULT_VERSION_OPTIONS]);
+      }
+    }
     return DEFAULT_VERSION_OPTIONS;
-  }, [selectedModpack]);
+  }, [selectedModpack, selectedTemplate]);
 
   useEffect(() => {
     setFormData((prev) => {
@@ -121,13 +129,8 @@ function CreateServerForm({ onClose, onCreate }) {
   const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);
 
-    // Apply template settings to form
+    // Apply all template settings to form
     const updates = {};
-
-    // Apply memory if template specifies it
-    if (template.memory) {
-      updates.memory = template.memory;
-    }
 
     // Apply server type if template specifies it
     if (template.serverType) {
@@ -137,6 +140,22 @@ function CreateServerForm({ onClose, onCreate }) {
       }
     }
 
+    // Apply memory if template specifies it
+    if (template.memory) {
+      // Normalize memory format (e.g., "4G", "4g", "4GB" -> "4G")
+      const memMatch = template.memory.match(/^(\d+)[gG][bB]?$/);
+      if (memMatch) {
+        updates.memory = `${memMatch[1]}G`;
+      } else {
+        updates.memory = template.memory;
+      }
+    }
+
+    // Apply minecraft version if template specifies it
+    if (template.minecraftVersion) {
+      updates.version = template.minecraftVersion;
+    }
+
     if (Object.keys(updates).length > 0) {
       setFormData((prev) => ({
         ...prev,
@@ -144,6 +163,16 @@ function CreateServerForm({ onClose, onCreate }) {
       }));
     }
   };
+
+  // Track which fields were set by template
+  const templateFields = useMemo(() => {
+    if (!selectedTemplate) return {};
+    return {
+      type: !!selectedTemplate.serverType,
+      memory: !!selectedTemplate.memory,
+      version: !!selectedTemplate.minecraftVersion
+    };
+  }, [selectedTemplate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -192,8 +221,11 @@ function CreateServerForm({ onClose, onCreate }) {
             <small>Alphanumeric characters and hyphens only (3-32 chars)</small>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="type">Server Type *</label>
+          <div className={`form-group ${templateFields.type ? 'from-template' : ''}`}>
+            <label htmlFor="type">
+              Server Type *
+              {templateFields.type && <span className="template-badge">from template</span>}
+            </label>
             <select
               id="type"
               name="type"
@@ -207,7 +239,11 @@ function CreateServerForm({ onClose, onCreate }) {
                 </option>
               ))}
             </select>
-            <small>Choose the mod loader/platform to install</small>
+            <small>
+              {templateFields.type
+                ? `Set by template: ${selectedTemplate?.name}`
+                : 'Choose the mod loader/platform to install'}
+            </small>
           </div>
 
           <div className="form-group">
@@ -268,8 +304,11 @@ function CreateServerForm({ onClose, onCreate }) {
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="version">Minecraft Version *</label>
+          <div className={`form-group ${templateFields.version ? 'from-template' : ''}`}>
+            <label htmlFor="version">
+              Minecraft Version *
+              {templateFields.version && <span className="template-badge">from template</span>}
+            </label>
             <select
               id="version"
               name="version"
@@ -279,19 +318,24 @@ function CreateServerForm({ onClose, onCreate }) {
             >
               {currentVersionOptions.map((version) => (
                 <option key={version} value={version}>
-                  {version}
+                  {version}{templateFields.version && version === selectedTemplate?.minecraftVersion ? ' (template)' : ''}
                 </option>
               ))}
             </select>
             <small>
-              {selectedModpack?.gameVersions?.length
-                ? 'Versions provided by the selected modpack (newest first)'
-                : 'Common Minecraft versions (select the one your mods require)'}
+              {templateFields.version
+                ? `Set by template: ${selectedTemplate?.name}`
+                : selectedModpack?.gameVersions?.length
+                  ? 'Versions provided by the selected modpack (newest first)'
+                  : 'Common Minecraft versions (select the one your mods require)'}
             </small>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="memory">Memory Allocation *</label>
+          <div className={`form-group ${templateFields.memory ? 'from-template' : ''}`}>
+            <label htmlFor="memory">
+              Memory Allocation *
+              {templateFields.memory && <span className="template-badge">from template</span>}
+            </label>
             <select
               id="memory"
               name="memory"
@@ -301,13 +345,17 @@ function CreateServerForm({ onClose, onCreate }) {
             >
               <option value="1G">1 GB</option>
               <option value="2G">2 GB</option>
-              <option value="4G">4 GB (Recommended)</option>
+              <option value="4G">4 GB{!templateFields.memory ? ' (Recommended)' : ''}</option>
               <option value="6G">6 GB</option>
               <option value="8G">8 GB</option>
               <option value="12G">12 GB</option>
               <option value="16G">16 GB</option>
             </select>
-            <small>RAM allocated to the server</small>
+            <small>
+              {templateFields.memory
+                ? `Set by template: ${selectedTemplate?.name} (${selectedTemplate?.memory})`
+                : 'RAM allocated to the server'}
+            </small>
           </div>
 
           <div className="form-group">

@@ -130,6 +130,14 @@
   font-style: italic;
 }
 
+.version-hint,
+.memory-hint {
+  background: var(--bg-secondary, #f1f5f9);
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+
 .suggestion-tags {
   display: flex;
   gap: 0.25rem;

@@ -379,8 +379,15 @@ class ComposeTemplateService {
       serviceCount: template.serviceCount,
       serverType: env.TYPE || this.inferServerType(template),
       memory: env.MEMORY || null,
+      minecraftVersion: env.VERSION || null,
       modpackPlatform: env.MODPACK_PLATFORM || null,
-      isModpack: this.isModpackTemplate(template)
+      modpackUrl: env.CF_PAGE_URL || env.MODRINTH_MODPACK || null,
+      isModpack: this.isModpackTemplate(template),
+      // Additional settings from template
+      difficulty: env.DIFFICULTY || null,
+      gameMode: env.MODE || null,
+      maxPlayers: env.MAX_PLAYERS || null,
+      motd: env.MOTD || null
     };
   }
 

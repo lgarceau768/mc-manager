@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import ModUploader from './ModUploader';
 import ModInfoModal from './ModInfoModal';
+import ModIcon from './ModIcon';
 import { modApi } from '../services/api';
 import './InstalledModsList.css';
 
@@ -75,6 +76,11 @@ function InstalledModsList({ serverId, serverType, serverStatus }) {
     }
   };
 
+  const handleDownload = (filename) => {
+    const downloadUrl = modApi.getModDownloadUrl(serverId, filename);
+    window.open(downloadUrl, '_blank');
+  };
+
   const formatSize = (bytes) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -134,6 +140,7 @@ function InstalledModsList({ serverId, serverType, serverStatus }) {
         <table className="mods-table">
           <thead>
             <tr>
+              <th className="th-icon"></th>
               <th>Name</th>
               <th>Version</th>
               <th>Size</th>
@@ -147,10 +154,20 @@ function InstalledModsList({ serverId, serverType, serverStatus }) {
                 key={mod.filename}
                 className={mod.enabled ? '' : 'disabled-mod'}
               >
+                <td className="mod-icon-cell">
+                  <ModIcon
+                    serverId={serverId}
+                    filename={mod.filename}
+                    modName={mod.name || mod.filename}
+                  />
+                </td>
                 <td className="mod-name">
                   <span title={mod.filename}>
                     {mod.name || mod.filename.replace('.jar', '').replace('.disabled', '')}
                   </span>
+                  {mod.authors && (
+                    <span className="mod-authors">by {mod.authors}</span>
+                  )}
                 </td>
                 <td className="mod-version">{mod.version || '-'}</td>
                 <td className="mod-size">{formatSize(mod.size)}</td>
@@ -166,6 +183,13 @@ function InstalledModsList({ serverId, serverType, serverStatus }) {
                     title="View Info"
                   >
                     Info
+                  </button>
+                  <button
+                    className="btn btn-xs btn-secondary"
+                    onClick={() => handleDownload(mod.filename)}
+                    title="Download JAR"
+                  >
+                    Download
                   </button>
                   <button
                     className={`btn btn-xs ${mod.enabled ? 'btn-warning' : 'btn-success'}`}

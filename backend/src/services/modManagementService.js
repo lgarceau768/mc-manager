@@ -471,6 +471,134 @@ class ModManagementService {
   }
 
   /**
+   * Get the file path for a mod (for downloads)
+   */
+  async getModFilePath(serverId, filename) {
+    const server = Server.findById(serverId);
+    if (!server) {
+      throw new NotFoundError(`Server not found: ${serverId}`);
+    }
+
+    const modsDir = this.getModsDirectory(serverId, server.type);
+    const filePath = path.join(modsDir, filename);
+
+    // Security: prevent path traversal
+    if (!filePath.startsWith(modsDir)) {
+      throw new ValidationError('Invalid filename');
+    }
+
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundError(`Mod not found: ${filename}`);
+    }
+
+    // Return clean filename for download (remove .disabled if present)
+    const safeFilename = filename.endsWith('.disabled')
+      ? filename.replace('.disabled', '')
+      : filename;
+
+    return { filePath, safeFilename };
+  }
+
+  /**
+   * Extract mod icon from JAR file
+   */
+  async getModIcon(serverId, filename) {
+    const server = Server.findById(serverId);
+    if (!server) {
+      throw new NotFoundError(`Server not found: ${serverId}`);
+    }
+
+    const modsDir = this.getModsDirectory(serverId, server.type);
+    const filePath = path.join(modsDir, filename);
+
+    // Security: prevent path traversal
+    if (!filePath.startsWith(modsDir)) {
+      throw new ValidationError('Invalid filename');
+    }
+
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundError(`Mod not found: ${filename}`);
+    }
+
+    try {
+      const zip = new AdmZip(filePath);
+
+      // Try Fabric icon path (from fabric.mod.json)
+      const fabricJson = zip.getEntry('fabric.mod.json');
+      if (fabricJson) {
+        try {
+          const json = JSON.parse(fabricJson.getData().toString('utf8'));
+          if (json.icon) {
+            const iconEntry = zip.getEntry(json.icon);
+            if (iconEntry) {
+              return {
+                buffer: iconEntry.getData(),
+                mimeType: this.getMimeType(json.icon)
+              };
+            }
+          }
+        } catch (e) {
+          // Continue to try other methods
+        }
+      }
+
+      // Try common icon paths
+      const commonIconPaths = [
+        'icon.png',
+        'logo.png',
+        'pack.png',
+        'assets/icon.png',
+        'assets/logo.png',
+        'META-INF/icon.png'
+      ];
+
+      for (const iconPath of commonIconPaths) {
+        const iconEntry = zip.getEntry(iconPath);
+        if (iconEntry) {
+          return {
+            buffer: iconEntry.getData(),
+            mimeType: this.getMimeType(iconPath)
+          };
+        }
+      }
+
+      // Try to find any png in root or assets
+      const entries = zip.getEntries();
+      for (const entry of entries) {
+        const name = entry.entryName.toLowerCase();
+        if ((name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg')) &&
+            (name.includes('icon') || name.includes('logo')) &&
+            !entry.isDirectory) {
+          return {
+            buffer: entry.getData(),
+            mimeType: this.getMimeType(entry.entryName)
+          };
+        }
+      }
+
+      return null;
+    } catch (error) {
+      logger.debug(`Could not extract icon from ${filename}: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Get MIME type from file extension
+   */
+  getMimeType(filename) {
+    const ext = path.extname(filename).toLowerCase();
+    const mimeTypes = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp'
+    };
+    return mimeTypes[ext] || 'image/png';
+  }
+
+  /**
    * Sanitize filename for safe file system operations
    */
   sanitizeFilename(filename) {
