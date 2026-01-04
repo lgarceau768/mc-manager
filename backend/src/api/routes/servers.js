@@ -323,4 +323,34 @@ router.post('/:id/players/:playerName/action', async (req, res, next) => {
   }
 });
 
+/**
+ * POST /api/servers/:id/recreate
+ * Recreate the Docker container for a server
+ */
+router.post('/:id/recreate', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const server = await serverService.recreateContainer(id);
+
+    logger.info(`Container recreated via API for server: ${id}`);
+    res.json(server);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/servers/:id/container-status
+ * Check if the server's container exists
+ */
+router.get('/:id/container-status', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const status = await serverService.checkContainerExists(id);
+    res.json(status);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

@@ -1,8 +1,46 @@
+import { useState } from 'react';
 import ServerStatus from '../../components/ServerStatus';
+import { serverApi } from '../../services/api';
 import { formatServerType, getServerAddress } from '../../utils/serverTypes';
 import './OverviewTab.css';
 
-function OverviewTab({ server, onAction }) {
+function OverviewTab({ server, onAction, onServerUpdated }) {
+  const [recreating, setRecreating] = useState(false);
+  const [recreateError, setRecreateError] = useState(null);
+  const [recreateSuccess, setRecreateSuccess] = useState(false);
+
+  const handleRecreateContainer = async () => {
+    if (!window.confirm('This will create a new Docker container for this server. Your world data and settings will be preserved. Continue?')) {
+      return;
+    }
+
+    try {
+      setRecreating(true);
+      setRecreateError(null);
+      setRecreateSuccess(false);
+
+      const updatedServer = await serverApi.recreateContainer(server.id);
+
+      setRecreateSuccess(true);
+      setTimeout(() => setRecreateSuccess(false), 5000);
+
+      if (onServerUpdated) {
+        onServerUpdated(updatedServer);
+      }
+    } catch (err) {
+      setRecreateError(err.message);
+    } finally {
+      setRecreating(false);
+    }
+  };
+
+  // Check if container is missing
+  const containerMissing = server.containerStatus &&
+    !server.containerStatus.running &&
+    server.containerStatus.status === 'stopped' &&
+    server.containerStatus.error === null &&
+    server.status !== 'stopped';
+
   const getStatusClass = (status) => {
     switch (status) {
       case 'running':
@@ -63,6 +101,43 @@ function OverviewTab({ server, onAction }) {
 
         <ServerStatus serverId={server.id} />
       </div>
+
+      {recreateSuccess && (
+        <div className="recreate-success">
+          Container recreated successfully! You can now start the server.
+        </div>
+      )}
+
+      {recreateError && (
+        <div className="recreate-error">
+          Failed to recreate container: {recreateError}
+        </div>
+      )}
+
+      {/* Container Missing Warning */}
+      {!server.container_id && (
+        <div className="container-missing-card">
+          <h3>Container Not Found</h3>
+          <div className="missing-details">
+            <p>
+              The Docker container for this server is missing or was removed outside of the application.
+              Your world data and configuration files are still intact.
+            </p>
+            <p>
+              Click the button below to recreate the container and restore server functionality.
+            </p>
+          </div>
+          <div className="missing-actions">
+            <button
+              className="btn btn-primary"
+              onClick={handleRecreateContainer}
+              disabled={recreating}
+            >
+              {recreating ? 'Recreating...' : 'Recreate Container'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {server.containerStatus?.error && (
         <div className="container-error-card">

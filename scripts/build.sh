@@ -45,7 +45,8 @@ build_api() {
     docker build \
         -t "${DOCKER_REPO}:api_${VERSION}" \
         -f backend/Dockerfile \
-        ./backend
+        ./backend \
+        --no-cache
 
     # Also tag as latest if building a version
     if [ "$VERSION" != "latest" ]; then
@@ -67,7 +68,8 @@ build_ui() {
     docker build \
         -t "${DOCKER_REPO}:ui_${VERSION}" \
         -f frontend/Dockerfile \
-        ./frontend
+        ./frontend \
+        --no-cache
 
     # Also tag as latest if building a version
     if [ "$VERSION" != "latest" ]; then

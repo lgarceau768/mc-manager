@@ -390,6 +390,22 @@ export const serverApi = {
    */
   getModpackDownloadUrl: (type, filename) => {
     return `${API_BASE_URL}/modpacks/${type.toLowerCase()}/${encodeURIComponent(filename)}/download`;
+  },
+
+  /**
+   * Recreate the Docker container for a server
+   */
+  recreateContainer: async (id) => {
+    const response = await api.post(`/servers/${id}/recreate`);
+    return response.data;
+  },
+
+  /**
+   * Check if server's container exists
+   */
+  checkContainerStatus: async (id) => {
+    const response = await api.get(`/servers/${id}/container-status`);
+    return response.data;
   }
 };
 

@@ -265,6 +265,105 @@ class ServerService {
   }
 
   /**
+   * Recreate the Docker container for a server
+   * Used when the container is removed/disconnected outside the application
+   */
+  async recreateContainer(serverId) {
+    try {
+      logger.info(`Recreating container for server: ${serverId}`);
+
+      const server = Server.findById(serverId);
+      if (!server) {
+        throw new NotFoundError(`Server not found: ${serverId}`);
+      }
+
+      // Check if container already exists and is valid
+      if (server.container_id) {
+        try {
+          const status = await dockerService.getContainerStatus(server.container_id);
+          if (status.status !== 'stopped' || status.running) {
+            throw new ConflictError('Container still exists. Stop and remove it first, or use restart instead.');
+          }
+        } catch (error) {
+          // Container doesn't exist or can't be inspected - this is expected
+          if (error.statusCode !== 404 && !(error instanceof ConflictError)) {
+            logger.debug(`Container ${server.container_id} not found, will recreate`);
+          } else if (error instanceof ConflictError) {
+            throw error;
+          }
+        }
+      }
+
+      // Ensure the volume path exists
+      const volumePath = server.volume_path;
+      const volumeHostPath = path.join(this.serversDataHostPath, server.id);
+
+      if (!fs.existsSync(volumePath)) {
+        fs.mkdirSync(volumePath, { recursive: true });
+        logger.info(`Created volume directory: ${volumePath}`);
+      }
+
+      // Ensure EULA is accepted
+      this.ensureEulaAccepted(volumePath);
+
+      // Create new container with stored settings
+      const containerId = await dockerService.createContainer({
+        serverId: server.id,
+        name: server.name,
+        version: server.version,
+        port: server.port,
+        memory: server.memory,
+        cpuLimit: server.cpu_limit,
+        volumePath,
+        volumeHostPath,
+        type: server.type
+      });
+
+      // Update database with new container ID
+      Server.update(serverId, {
+        container_id: containerId,
+        status: 'stopped'
+      });
+
+      logger.info(`Container recreated successfully for server ${serverId}: ${containerId}`);
+
+      const updatedServer = Server.findById(serverId);
+      return await this.withConnectionInfo({
+        ...updatedServer,
+        settings: this.getServerSettingsData(updatedServer),
+        containerRecreated: true
+      });
+    } catch (error) {
+      logger.error(`Failed to recreate container: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if a server's container exists
+   */
+  async checkContainerExists(serverId) {
+    const server = Server.findById(serverId);
+    if (!server) {
+      throw new NotFoundError(`Server not found: ${serverId}`);
+    }
+
+    if (!server.container_id) {
+      return { exists: false, reason: 'no_container_id' };
+    }
+
+    try {
+      await dockerService.getContainerStatus(server.container_id);
+      return { exists: true };
+    } catch (error) {
+      if (error.statusCode === 404) {
+        return { exists: false, reason: 'container_not_found' };
+      }
+      return { exists: false, reason: 'error', error: error.message };
+    }
+  }
+
+  /**
    * Delete a server
    */
   async deleteServer(serverId) {
