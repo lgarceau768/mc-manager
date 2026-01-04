@@ -11,6 +11,9 @@ RUN npm install --omit=dev
 # Copy app source (copy src directory explicitly)
 COPY src ./src
 
+# Copy compose examples for template suggestions
+COPY compose_examples ./compose_examples
+
 # Create data directories
 RUN mkdir -p /app/data/database /app/data/servers /app/logs
 
