@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { serverApi } from '../services/api';
 import { SERVER_TYPE_OPTIONS } from '../utils/serverTypes';
+import TemplateSuggestions from './TemplateSuggestions';
+import TemplateBrowser from './TemplateBrowser';
 import './CreateServerForm.css';
 
 const PORT_RANGE_START = Number(import.meta.env.VITE_PORT_RANGE_START || 25565);
@@ -54,6 +56,8 @@ function CreateServerForm({ onClose, onCreate }) {
   const [error, setError] = useState(null);
   const [modpackOptions, setModpackOptions] = useState([]);
   const [modpackLoading, setModpackLoading] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [showTemplateBrowser, setShowTemplateBrowser] = useState(false);
 
   const fetchModpacks = useCallback(async (type) => {
     try {
@@ -105,12 +109,40 @@ function CreateServerForm({ onClose, onCreate }) {
         modpack: '',
         version: DEFAULT_VERSION
       }));
+      setSelectedTemplate(null);
       return;
     }
     setFormData((prev) => ({
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleTemplateSelect = (template) => {
+    setSelectedTemplate(template);
+
+    // Apply template settings to form
+    const updates = {};
+
+    // Apply memory if template specifies it
+    if (template.memory) {
+      updates.memory = template.memory;
+    }
+
+    // Apply server type if template specifies it
+    if (template.serverType) {
+      const typeValue = template.serverType.toUpperCase();
+      if (SERVER_TYPE_OPTIONS.some(opt => opt.value === typeValue)) {
+        updates.type = typeValue;
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        ...updates
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -123,7 +155,8 @@ function CreateServerForm({ onClose, onCreate }) {
         ...formData,
         cpuLimit: formData.cpuLimit === '' ? undefined : Number(formData.cpuLimit),
         port: formData.port === '' ? undefined : Number(formData.port),
-        modpack: formData.modpack || undefined
+        modpack: formData.modpack || undefined,
+        templateId: selectedTemplate?.id || undefined
       };
       const newServer = await serverApi.createServer(payload);
       onCreate(newServer);
@@ -205,6 +238,35 @@ function CreateServerForm({ onClose, onCreate }) {
             </div>
             <small>Select a saved modpack for this server type (optional)</small>
           </div>
+
+          <TemplateSuggestions
+            serverType={formData.type}
+            modpackUrl={formData.modpack ? selectedModpack?.sourceUrl : null}
+            onSelect={handleTemplateSelect}
+          />
+
+          <button
+            type="button"
+            className="btn btn-link browse-templates-btn"
+            onClick={() => setShowTemplateBrowser(true)}
+          >
+            Browse all templates...
+          </button>
+
+          {selectedTemplate && (
+            <div className="selected-template-info">
+              <span className="template-label">Using template:</span>
+              <span className="template-name">{selectedTemplate.name}</span>
+              <button
+                type="button"
+                className="clear-template-btn"
+                onClick={() => setSelectedTemplate(null)}
+                title="Clear template selection"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="version">Minecraft Version *</label>
@@ -306,6 +368,14 @@ function CreateServerForm({ onClose, onCreate }) {
           </div>
         </form>
       </div>
+
+      {showTemplateBrowser && (
+        <TemplateBrowser
+          initialServerType={formData.type}
+          onSelect={handleTemplateSelect}
+          onClose={() => setShowTemplateBrowser(false)}
+        />
+      )}
     </div>
   );
 }

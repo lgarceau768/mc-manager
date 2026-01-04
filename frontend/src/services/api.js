@@ -375,6 +375,166 @@ export const serverApi = {
   getBackupFrequencies: async () => {
     const response = await api.get('/schedules/frequencies');
     return response.data;
+  },
+
+  /**
+   * Get modpack download URL
+   */
+  getModpackDownloadUrl: (type, filename) => {
+    return `${API_BASE_URL}/modpacks/${type.toLowerCase()}/${encodeURIComponent(filename)}/download`;
+  }
+};
+
+/**
+ * Mod API methods
+ */
+export const modApi = {
+  /**
+   * Get mod search configuration
+   */
+  getConfig: async () => {
+    const response = await api.get('/mods/config');
+    return response.data;
+  },
+
+  /**
+   * Search for mods on CurseForge or Modrinth
+   */
+  searchMods: async (source, query, gameVersion, modLoader, options = {}) => {
+    const params = new URLSearchParams({
+      source,
+      query,
+      ...(gameVersion && { gameVersion }),
+      ...(modLoader && { modLoader }),
+      ...(options.limit && { limit: options.limit }),
+      ...(options.offset && { offset: options.offset })
+    });
+    const response = await api.get(`/mods/search?${params}`);
+    return response.data;
+  },
+
+  /**
+   * Get available versions for a mod
+   */
+  getModVersions: async (source, modId, gameVersion, modLoader) => {
+    const params = new URLSearchParams({
+      ...(gameVersion && { gameVersion }),
+      ...(modLoader && { modLoader })
+    });
+    const response = await api.get(`/mods/${source}/${modId}/versions?${params}`);
+    return response.data;
+  },
+
+  /**
+   * List mods installed on a server
+   */
+  listServerMods: async (serverId) => {
+    const response = await api.get(`/servers/${serverId}/mods`);
+    return response.data;
+  },
+
+  /**
+   * Install a mod from search results
+   */
+  installModToServer: async (serverId, source, modId, versionId) => {
+    const response = await api.post(`/servers/${serverId}/mods/install`, {
+      source,
+      modId,
+      versionId
+    });
+    return response.data;
+  },
+
+  /**
+   * Get detailed info for a specific mod
+   */
+  getModInfo: async (serverId, filename) => {
+    const response = await api.get(`/servers/${serverId}/mods/${encodeURIComponent(filename)}/info`);
+    return response.data;
+  },
+
+  /**
+   * Toggle mod enabled/disabled status
+   */
+  toggleMod: async (serverId, filename) => {
+    const response = await api.patch(`/servers/${serverId}/mods/${encodeURIComponent(filename)}/toggle`);
+    return response.data;
+  },
+
+  /**
+   * Delete a mod from a server
+   */
+  deleteMod: async (serverId, filename) => {
+    const response = await api.delete(`/servers/${serverId}/mods/${encodeURIComponent(filename)}`);
+    return response.data;
+  }
+};
+
+/**
+ * Template API methods
+ */
+export const templateApi = {
+  /**
+   * List all available compose templates
+   */
+  listTemplates: async (options = {}) => {
+    const params = new URLSearchParams();
+    if (options.serverType) params.set('serverType', options.serverType);
+    if (options.hasModpack) params.set('hasModpack', 'true');
+    if (options.search) params.set('search', options.search);
+
+    const response = await api.get(`/templates?${params}`);
+    return response.data;
+  },
+
+  /**
+   * Get template suggestions based on server configuration
+   */
+  getSuggestions: async (config = {}) => {
+    const params = new URLSearchParams();
+    if (config.serverType) params.set('serverType', config.serverType);
+    if (config.modpack) params.set('modpack', config.modpack);
+    if (config.modpackPlatform) params.set('modpackPlatform', config.modpackPlatform);
+
+    const response = await api.get(`/templates/suggestions?${params}`);
+    return response.data;
+  },
+
+  /**
+   * Get a specific template by ID
+   */
+  getTemplate: async (id) => {
+    const response = await api.get(`/templates/${encodeURIComponent(id)}`);
+    return response.data;
+  },
+
+  /**
+   * Get environment variable reference for a template
+   */
+  getTemplateEnvVars: async (id) => {
+    const response = await api.get(`/templates/${encodeURIComponent(id)}/env`);
+    return response.data;
+  },
+
+  /**
+   * Generate a compose configuration from a template
+   */
+  generateFromTemplate: async (id, overrides = {}) => {
+    const response = await api.post(`/templates/${encodeURIComponent(id)}/generate`, overrides);
+    return response.data;
+  }
+};
+
+/**
+ * Player API methods
+ */
+export const playerApi = {
+  /**
+   * Get online players for a server
+   */
+  getOnlinePlayers: async (serverId) => {
+    const response = await api.get(`/servers/${serverId}/players`);
+    return response.data;
   }
 };
 
