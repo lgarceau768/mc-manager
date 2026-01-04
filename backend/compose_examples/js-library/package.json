@@ -1,0 +1,23 @@
+{
+  "name": "mc-compose-examples",
+  "version": "0.1.0",
+  "description": "Utility helpers for discovering and summarizing the Minecraft docker-compose examples.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": "./src/index.js",
+  "files": [
+    "src"
+  ],
+  "keywords": [
+    "minecraft",
+    "docker",
+    "compose",
+    "itzg"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "yaml": "^2.5.0"
+  }
+}
