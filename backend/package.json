@@ -12,6 +12,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@iarna/toml": "^2.2.5",
     "adm-zip": "^0.5.10",
     "archiver": "^7.0.1",
     "axios": "^1.13.2",
@@ -28,7 +29,8 @@
     "pngjs": "^7.0.0",
     "uuid": "^9.0.1",
     "winston": "^3.11.0",
-    "ws": "^8.14.2"
+    "ws": "^8.14.2",
+    "yaml": "^2.5.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

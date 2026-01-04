@@ -2,7 +2,7 @@ import express from 'express';
 import os from 'os';
 import multer from 'multer';
 import serverService from '../../services/serverService.js';
-import { validate, createServerSchema, updateServerSettingsSchema } from '../../utils/validation.js';
+import { validate, createServerSchema, updateServerSettingsSchema, updateServerResourcesSchema } from '../../utils/validation.js';
 import logger from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
 
@@ -172,6 +172,22 @@ router.patch('/:id/settings', validate(updateServerSettingsSchema), async (req, 
   try {
     const { id } = req.params;
     const server = await serverService.updateServerSettings(id, req.body);
+    res.json(server);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PATCH /api/servers/:id/resources
+ * Update server resource allocation (memory, CPU)
+ */
+router.patch('/:id/resources', validate(updateServerResourcesSchema), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const server = await serverService.updateServerResources(id, req.body);
+
+    logger.info(`Server resources updated via API: ${id}`);
     res.json(server);
   } catch (error) {
     next(error);

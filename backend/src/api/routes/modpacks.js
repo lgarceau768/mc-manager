@@ -113,6 +113,41 @@ router.post('/:type', upload.single('file'), async (req, res, next) => {
 });
 
 /**
+ * Download a saved modpack
+ * GET /api/modpacks/:type/:filename/download
+ */
+router.get('/:type/:filename/download', async (req, res, next) => {
+  try {
+    const { type, filename } = req.params;
+
+    // Get the modpacks directory
+    const modpacksBasePath = process.env.MODPACKS_PATH ||
+      new URL('../../../data/modpacks', import.meta.url).pathname;
+
+    const filePath = `${modpacksBasePath}/${type.toLowerCase()}/${filename}`;
+
+    // Security: validate the path is within modpacks directory
+    const path = await import('path');
+    const resolvedPath = path.resolve(filePath);
+    const resolvedBase = path.resolve(modpacksBasePath);
+
+    if (!resolvedPath.startsWith(resolvedBase)) {
+      throw new ValidationError('Invalid file path');
+    }
+
+    // Check if file exists
+    if (!fs.existsSync(resolvedPath)) {
+      return res.status(404).json({ error: 'Modpack not found' });
+    }
+
+    // Send file for download
+    res.download(resolvedPath, filename);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * Delete a saved modpack
  * DELETE /api/modpacks/:type/:filename
  */

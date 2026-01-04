@@ -97,6 +97,22 @@
   cursor: not-allowed;
 }
 
+.btn-download {
+  background-color: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-download:hover {
+  background-color: #2563eb;
+}
+
 .btn-delete {
   background-color: #d14343;
   color: #fff;
