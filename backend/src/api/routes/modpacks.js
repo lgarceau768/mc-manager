@@ -1,11 +1,11 @@
 import express from 'express';
-import fs from 'fs';
-import os from 'os';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import multer from 'multer';
 import serverService from '../../services/serverService.js';
 import modpackImportService from '../../services/modpackImportService.js';
-import { ValidationError } from '../../utils/errors.js';
-import { asyncHandler } from '../../utils/errors.js';
+import { ValidationError, asyncHandler } from '../../utils/errors.js';
 import logger from '../../utils/logger.js';
 
 const router = express.Router();
@@ -62,7 +62,7 @@ router.get('/imported/:type', asyncHandler(async (req, res) => {
  * Get saved modpacks for a type
  * GET /api/modpacks/:type
  */
-router.get('/', async (req, res, next) => {
+router.get('/', async (_req, res, next) => {
   try {
     const modpacks = serverService.listAllSavedModpacks();
     res.json(modpacks);
@@ -127,7 +127,6 @@ router.get('/:type/:filename/download', async (req, res, next) => {
     const filePath = `${modpacksBasePath}/${type.toLowerCase()}/${filename}`;
 
     // Security: validate the path is within modpacks directory
-    const path = await import('path');
     const resolvedPath = path.resolve(filePath);
     const resolvedBase = path.resolve(modpacksBasePath);
 

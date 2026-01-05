@@ -221,7 +221,11 @@ function ServerDetails() {
 
       <div className="tab-content">
         {activeTab === 'overview' && (
-          <OverviewTab server={server} onAction={handleAction} />
+          <OverviewTab
+            server={server}
+            onAction={handleAction}
+            onServerUpdated={handleServerUpdated}
+          />
         )}
 
         {activeTab === 'console' && (

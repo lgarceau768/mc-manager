@@ -148,3 +148,55 @@
   color: #dc2626;
   border: 1px solid #fecaca;
 }
+
+/* Container missing card */
+.container-missing-card {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.container-missing-card h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: #b45309;
+}
+
+.missing-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.missing-details p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.missing-actions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #fcd34d;
+}
+
+/* Recreate success/error messages */
+.recreate-success {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  color: #166534;
+  font-size: 0.95rem;
+}
+
+.recreate-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  color: #b91c1c;
+  font-size: 0.95rem;
+}

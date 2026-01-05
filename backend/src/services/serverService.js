@@ -14,6 +14,7 @@ import modpackImportService from './modpackImportService.js';
 import logger from '../utils/logger.js';
 import { getPreferredHost } from '../utils/network.js';
 import { NotFoundError, ConflictError, ValidationError } from '../utils/errors.js';
+import notificationService from './notificationService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -165,10 +166,11 @@ class ServerService {
    * Start a server
    */
   async startServer(serverId) {
+    let server;
     try {
       logger.info(`Starting server: ${serverId}`);
 
-      const server = Server.findById(serverId);
+      server = Server.findById(serverId);
       if (!server) {
         throw new NotFoundError(`Server not found: ${serverId}`);
       }
@@ -190,6 +192,12 @@ class ServerService {
       Server.update(serverId, { status: 'running' });
 
       logger.info(`Server started successfully: ${serverId}`);
+
+      // Send notification
+      notificationService.notify(serverId, 'serverStart', {
+        serverName: server.name
+      }).catch(err => logger.warn(`Failed to send start notification: ${err.message}`));
+
       const updated = Server.findById(serverId);
       return await this.withConnectionInfo({
         ...updated,
@@ -197,8 +205,17 @@ class ServerService {
       });
     } catch (error) {
       // Revert status on error
-      Server.update(serverId, { status: 'stopped' });
+      Server.update(serverId, { status: 'error' });
       logger.error(`Failed to start server: ${error.message}`);
+
+      // Send error notification if we have server info
+      if (server) {
+        notificationService.notify(serverId, 'serverError', {
+          serverName: server.name,
+          error: error.message
+        }).catch(err => logger.warn(`Failed to send error notification: ${err.message}`));
+      }
+
       throw error;
     }
   }
@@ -229,6 +246,12 @@ class ServerService {
       Server.update(serverId, { status: 'stopped' });
 
       logger.info(`Server stopped successfully: ${serverId}`);
+
+      // Send notification
+      notificationService.notify(serverId, 'serverStop', {
+        serverName: server.name
+      }).catch(err => logger.warn(`Failed to send stop notification: ${err.message}`));
+
       const updated = Server.findById(serverId);
       return await this.withConnectionInfo({
         ...updated,
