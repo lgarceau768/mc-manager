@@ -23,6 +23,11 @@ backend/data/
 frontend/dist/
 frontend/build/
 
+# Test coverage
+coverage/
+backend/coverage/
+*.lcov
+
 # Logs
 logs/
 *.log

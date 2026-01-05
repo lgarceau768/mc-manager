@@ -2,7 +2,8 @@ import express from 'express';
 import os from 'os';
 import multer from 'multer';
 import serverService from '../../services/serverService.js';
-import { validate, createServerSchema, updateServerSettingsSchema } from '../../utils/validation.js';
+import playerService from '../../services/playerService.js';
+import { validate, createServerSchema, updateServerSettingsSchema, updateServerResourcesSchema } from '../../utils/validation.js';
 import logger from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
 
@@ -179,6 +180,22 @@ router.patch('/:id/settings', validate(updateServerSettingsSchema), async (req, 
 });
 
 /**
+ * PATCH /api/servers/:id/resources
+ * Update server resource allocation (memory, CPU)
+ */
+router.patch('/:id/resources', validate(updateServerResourcesSchema), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const server = await serverService.updateServerResources(id, req.body);
+
+    logger.info(`Server resources updated via API: ${id}`);
+    res.json(server);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * POST /api/servers/:id/icon
  * Upload server icon
  */
@@ -279,6 +296,58 @@ router.post('/:id/apply-modpack', async (req, res, next) => {
 
     logger.info(`Modpack applied to server via API: ${id}`);
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/servers/:id/players/:playerName/action
+ * Execute a player action (kick, ban, op, deop, tp)
+ */
+router.post('/:id/players/:playerName/action', async (req, res, next) => {
+  try {
+    const { id, playerName } = req.params;
+    const { action } = req.body;
+
+    if (!action) {
+      throw new ValidationError('action is required');
+    }
+
+    const result = await playerService.executePlayerAction(id, decodeURIComponent(playerName), action);
+
+    logger.info(`Player action ${action} executed on ${playerName} for server ${id}`);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/servers/:id/recreate
+ * Recreate the Docker container for a server
+ */
+router.post('/:id/recreate', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const server = await serverService.recreateContainer(id);
+
+    logger.info(`Container recreated via API for server: ${id}`);
+    res.json(server);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/servers/:id/container-status
+ * Check if the server's container exists
+ */
+router.get('/:id/container-status', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const status = await serverService.checkContainerExists(id);
+    res.json(status);
   } catch (error) {
     next(error);
   }

@@ -1,11 +1,11 @@
 import express from 'express';
-import fs from 'fs';
-import os from 'os';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import multer from 'multer';
 import serverService from '../../services/serverService.js';
 import modpackImportService from '../../services/modpackImportService.js';
-import { ValidationError } from '../../utils/errors.js';
-import { asyncHandler } from '../../utils/errors.js';
+import { ValidationError, asyncHandler } from '../../utils/errors.js';
 import logger from '../../utils/logger.js';
 
 const router = express.Router();
@@ -62,7 +62,7 @@ router.get('/imported/:type', asyncHandler(async (req, res) => {
  * Get saved modpacks for a type
  * GET /api/modpacks/:type
  */
-router.get('/', async (req, res, next) => {
+router.get('/', async (_req, res, next) => {
   try {
     const modpacks = serverService.listAllSavedModpacks();
     res.json(modpacks);
@@ -109,6 +109,40 @@ router.post('/:type', upload.single('file'), async (req, res, next) => {
     if (req.file?.path) {
       fs.unlink(req.file.path, () => {});
     }
+  }
+});
+
+/**
+ * Download a saved modpack
+ * GET /api/modpacks/:type/:filename/download
+ */
+router.get('/:type/:filename/download', async (req, res, next) => {
+  try {
+    const { type, filename } = req.params;
+
+    // Get the modpacks directory
+    const modpacksBasePath = process.env.MODPACKS_PATH ||
+      new URL('../../../data/modpacks', import.meta.url).pathname;
+
+    const filePath = `${modpacksBasePath}/${type.toLowerCase()}/${filename}`;
+
+    // Security: validate the path is within modpacks directory
+    const resolvedPath = path.resolve(filePath);
+    const resolvedBase = path.resolve(modpacksBasePath);
+
+    if (!resolvedPath.startsWith(resolvedBase)) {
+      throw new ValidationError('Invalid file path');
+    }
+
+    // Check if file exists
+    if (!fs.existsSync(resolvedPath)) {
+      return res.status(404).json({ error: 'Modpack not found' });
+    }
+
+    // Send file for download
+    res.download(resolvedPath, filename);
+  } catch (error) {
+    next(error);
   }
 });
 

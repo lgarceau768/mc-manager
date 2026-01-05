@@ -1,449 +1,439 @@
-# Minecraft Server Manager
+<p align="center">
+  <img src="docs/logo.png" alt="Minecraft Server Manager" width="120" />
+</p>
 
-A self-hosted web application for managing modded Minecraft servers using Docker containerization.
+<h1 align="center">Minecraft Server Manager</h1>
+
+<p align="center">
+  <strong>A self-hosted web application for managing Minecraft servers with Docker</strong>
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#configuration">Configuration</a> •
+  <a href="#contributing">Contributing</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
+  <img src="https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg" alt="Node.js" />
+  <img src="https://img.shields.io/badge/docker-%3E%3D20.10-blue.svg" alt="Docker" />
+</p>
+
+---
+
+## Overview
+
+Minecraft Server Manager is an open-source, self-hosted solution for running and managing multiple Minecraft servers from a single web interface. Built with Docker containerization, it provides isolation, easy resource management, and persistent data storage for each server instance.
+
+Whether you're running a small server for friends or managing multiple modded servers, this tool simplifies the entire lifecycle—from creation to backups to mod management.
+
+<p align="center">
+  <img src="docs/screenshot.png" alt="Dashboard Screenshot" width="800" />
+</p>
 
 ## Features
 
-- 🎮 **Multi-Server Management**: Create and manage multiple Minecraft server instances
-- 🐳 **Docker-Based**: Each server runs in an isolated Docker container
-- 🖥️ **Web Interface**: User-friendly React-based dashboard
-- 📊 **Real-Time Monitoring**: Live server stats (CPU, memory usage)
-- 📝 **Console Access**: Real-time log streaming and command execution via WebSocket
-- ⚙️ **Resource Control**: Configure CPU and memory limits per server
-- 🎯 **Server Types**: Currently supports Paper servers (Forge and Fabric coming in Phase 2)
+### Server Management
+- **Multi-Server Support** — Run multiple Minecraft servers simultaneously, each in isolated Docker containers
+- **Server Types** — Support for Paper, Forge, Fabric, and NeoForge servers
+- **One-Click Operations** — Start, stop, restart, and delete servers with a single click
+- **Resource Control** — Configure memory (1-16GB) and CPU limits per server
+- **Auto Port Assignment** — Automatic port allocation from a configurable range
 
-## Prerequisites
+### Real-Time Monitoring
+- **Live Console** — Stream server logs in real-time via WebSocket
+- **Command Execution** — Send commands directly to servers from the web UI
+- **Resource Stats** — Monitor CPU and memory usage per server
+- **Player Tracking** — View online players with avatar display and admin actions (kick, ban, op)
 
-Before you begin, ensure you have the following installed:
+### Mod & Plugin Management
+- **Mod Browser** — Search and install mods from CurseForge and Modrinth
+- **Mod Library** — Upload and manage mods/plugins per server
+- **Enable/Disable Mods** — Toggle mods without deleting them
+- **Modpack Support** — Import modpacks from CurseForge, Modrinth, or upload your own
 
-- **Docker** (version 20.10 or higher)
-  - Docker Engine must be running
-  - User must be in the `docker` group: `sudo usermod -aG docker $USER`
+### Backup System
+- **Manual Backups** — Create backups on-demand with one click
+- **Scheduled Backups** — Configure automatic backups (hourly, daily, weekly)
+- **Backup Management** — Download, restore, or delete backups from the UI
+- **Safe Operations** — Uses RCON to safely pause world saving during backups
 
-- **Node.js** (version 18 or higher)
+### Configuration
+- **Server Settings** — Edit MOTD, max players, difficulty, PvP, and more
+- **Server Icons** — Upload custom 64x64 server icons
+- **File Browser** — Navigate and manage server files directly
 
-- **npm** (version 9 or higher, comes with Node.js)
+### Notifications
+- **Discord Integration** — Receive notifications for server events via Discord webhooks
+- **Configurable Events** — Choose which events trigger notifications (start, stop, errors, backups)
+
+### Security
+- **Optional Authentication** — Enable login protection with username/password
+- **Container Isolation** — Each server runs in its own Docker container
+- **Input Validation** — All inputs are validated and sanitized
+
+## Quick Start
+
+### Using Docker (Recommended)
+
+The fastest way to get started is with Docker Compose:
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/mc-server-manager.git
+cd mc-server-manager
+
+# Copy the example compose file
+cp docker-compose.example.yml docker-compose.yml
+
+# Create data directories
+mkdir -p data/database data/servers data/modpacks data/backups logs
+
+# Start the application
+docker compose up -d
+```
+
+Open http://localhost:3000 in your browser.
+
+### Using Pre-built Images
+
+```bash
+# Download the example compose file
+curl -O https://raw.githubusercontent.com/yourusername/mc-server-manager/main/docker-compose.example.yml
+mv docker-compose.example.yml docker-compose.yml
+
+# Create data directories
+mkdir -p data/database data/servers data/modpacks data/backups logs
+
+# Start the application
+docker compose up -d
+```
 
 ## Installation
 
-1. **Clone the repository** (or navigate to the project directory):
+### Prerequisites
+
+- **Docker** v20.10 or higher
+- **Docker Compose** v2.0 or higher
+- **Node.js** v18+ (for development only)
+
+### Docker Deployment
+
+1. **Clone the repository:**
    ```bash
-   cd /Users/lgarceau/Code/personal/mc-server-manager
+   git clone https://github.com/yourusername/mc-server-manager.git
+   cd mc-server-manager
    ```
 
-2. **Install dependencies**:
+2. **Configure environment:**
    ```bash
-   npm run install:all
+   cp .env.example .env
+   # Edit .env to set PUBLIC_SERVER_HOST to your server's IP or hostname
    ```
 
-3. **Pull the Minecraft server Docker image**:
+3. **Start the services:**
    ```bash
-   docker pull itzg/minecraft-server:latest
+   docker compose up -d
    ```
 
-4. **Create necessary directories**:
-   ```bash
-   mkdir -p data/database data/servers
-   ```
+4. **Access the application:**
+   - Web UI: http://localhost:3000
+   - API: http://localhost:3001/api
 
-5. **Configure environment** (backend/.env is already created):
-   - Review `backend/.env` and adjust if needed
-   - Default settings should work for most setups
+### Development Setup
 
-## Running the Application
+For local development without Docker:
 
-### Option 1: Docker Deployment (Recommended for Production)
-
-The easiest way to run the application is using Docker Compose:
-
-1. **Ensure Docker is running**:
-   ```bash
-   docker ps
-   ```
-
-2. **Pull the Minecraft server image**:
-   ```bash
-   docker pull itzg/minecraft-server:latest
-   ```
-
-3. **Start the application**:
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **View logs** (optional):
-   ```bash
-   docker-compose logs -f
-   ```
-
-5. **Stop the application**:
-   ```bash
-   docker-compose down
-   ```
-
-**Access the application:**
-- **Frontend UI**: http://localhost:3000
-- **Backend API**: http://localhost:3001/api (not directly accessible, proxied through frontend)
-
-**Rebuild after code changes:**
 ```bash
-docker-compose up -d --build
+# Install dependencies
+npm run install:all
+
+# Start development servers (backend + frontend)
+npm run dev
 ```
 
-### Option 1b: Build a Single Docker Image
+The frontend runs on port 3000 and the backend on port 3001.
 
-For publishing a self-contained image (UI + API) you can use the build tooling under `build/`:
+### Building from Source
 
-1. Copy the environment template and adjust values for your host:
-   ```bash
-   cp build/.env.example build/.env
-   # edit build/.env (at minimum set SERVERS_DATA_PATH_HOST to your real host path)
-   ```
+```bash
+# Build Docker images locally
+./scripts/build.sh
 
-2. Build the image (this runs the frontend build, installs backend dependencies, and bakes the defaults defined in `build/.env`):
-   ```bash
-   npm run build:image
-   # or ./build/build-image.sh
-   ```
+# Or build and push to registry
+./scripts/push.sh
+```
 
-3. Run the resulting container (serves both UI and API on port 3001 by default):
-   ```bash
-   docker run -d \
-     --name mc-server-manager \
-     -p 8080:3001 \
-     -v /var/run/docker.sock:/var/run/docker.sock \
-     -v /opt/mc-manager/data:/data \
-     -e SERVERS_DATA_PATH_HOST=/opt/mc-manager/data/servers \
-     mc-server-manager:latest
-   ```
+## Configuration
 
-The `/data` bind mount stores the SQLite database, Minecraft server data, and shared modpack library. `SERVERS_DATA_PATH_HOST` must be the real host path that Docker should mount into the Minecraft containers so they see the same world data directory.
+### Environment Variables
 
-### Continuous Integration
+Create a `.env` file in the project root:
 
-Every push or pull request automatically triggers `.github/workflows/docker-build.yml`, which runs `npm run build:image` on GitHub Actions. This validates that the Docker image can be produced end-to-end using the same build script shipped with the repository. If you add new environment variables or build arguments, keep the workflow in sync so CI mirrors local behavior.
+```env
+# Public hostname or IP for Minecraft client connections
+PUBLIC_SERVER_HOST=192.168.1.100
 
-### Option 2: Development Mode (Local)
+# Optional: Enable authentication
+ENABLE_AUTH=false
+AUTH_USERNAME=admin
+AUTH_PASSWORD=changeme
+JWT_SECRET=your-secret-key
+```
 
-Run both backend and frontend locally without Docker:
+### Docker Compose Configuration
 
-1. **Install dependencies** (if not already done):
-   ```bash
-   npm run install:all
-   ```
+Key settings in `docker-compose.yml`:
 
-2. **Run both services**:
-   ```bash
-   npm run dev
-   ```
+```yaml
+services:
+  backend:
+    environment:
+      # Where Minecraft servers store data (inside container)
+      - SERVERS_DATA_PATH=/app/data/servers
+      # Host path for Docker volume mounts (must match your bind mount)
+      - SERVERS_DATA_PATH_HOST=${PWD}/data/servers
+      # Port range for Minecraft servers
+      - PORT_RANGE_START=25565
+      - PORT_RANGE_END=25600
+```
 
-   Or run them separately:
-   ```bash
-   # Terminal 1 - Backend API
-   npm run dev:backend
+### Port Requirements
 
-   # Terminal 2 - Frontend UI
-   npm run dev:frontend
-   ```
+| Port | Service | Description |
+|------|---------|-------------|
+| 3000 | Frontend | Web UI (Nginx) |
+| 3001 | Backend | API Server |
+| 25565-25600 | Minecraft | Game servers (configurable range) |
 
-**Access the application:**
-- **Frontend UI**: http://localhost:3000
-- **Backend API**: http://localhost:3001/api
-- **API Health Check**: http://localhost:3001/api/health
+Ensure these ports are open in your firewall for external access.
 
 ## Usage
 
 ### Creating a Server
 
-1. Click "Create Server" button on the dashboard
-2. Fill in the form:
-   - **Server Name**: Alphanumeric with hyphens (3-32 chars)
-   - **Minecraft Version**: Paper version (e.g., "1.20.4" or "latest")
-   - **Memory Allocation**: 1GB to 16GB (4GB recommended)
-   - **CPU Limit**: 0.5 to 8.0 cores (optional)
-3. Click "Create Server"
-
-The server will be created but not started automatically.
+1. Click **"Create Server"** on the dashboard
+2. Configure your server:
+   - **Name**: Server identifier (alphanumeric, 3-32 chars)
+   - **Type**: Paper, Forge, Fabric, or NeoForge
+   - **Version**: Minecraft version (e.g., "1.20.4")
+   - **Memory**: RAM allocation (4GB+ recommended for modded)
+   - **CPU Limit**: Optional CPU core limit
+3. Click **"Create"** — the server will be created but not started
 
 ### Managing Servers
 
-- **Start**: Click "Start" on a stopped server
-- **Stop**: Click "Stop" on a running server (gracefully saves world)
-- **Restart**: Click "Restart" to stop and start the server
-- **Delete**: Click "Delete" and confirm (volume data is preserved)
-- **View Details**: Click on a server card to see full details
-
-### Monitoring
-
-On the server details page:
-- **Server Info**: View ID, type, version, port, and resources
-- **Stats**: Real-time CPU and memory usage
-- **Console**: Live log streaming with command execution
+- **Start/Stop**: Use the buttons on the server card or details page
+- **Console**: View logs and execute commands in the Console tab
+- **Settings**: Modify server.properties values in the Settings tab
+- **Mods**: Install, enable/disable, or remove mods in the Mods tab
+- **Backups**: Create and manage backups in the Backups tab
+- **Players**: View online players and execute admin actions
 
 ### Connecting to a Server
 
-Players can connect using:
+Players connect using:
 ```
-<your-ip>:<server-port>
-```
-
-For example, if your server port is 25565:
-```
-192.168.1.100:25565
+your-server-ip:port
 ```
 
-**Note**: You may need to configure your firewall to allow the port.
+Example: `192.168.1.100:25565`
+
+The connection address is displayed on the server's Overview tab.
+
+### Discord Notifications
+
+1. Create a Discord webhook in your server settings
+2. Go to the **Notifications** tab for your Minecraft server
+3. Paste the webhook URL and enable desired events
+4. Click **"Test Webhook"** to verify
 
 ## Architecture
 
 ```
-┌─────────────────┐
-│  React Frontend │  (Port 3000)
-└────────┬────────┘
-         │ HTTP/WebSocket
-┌────────▼────────┐
-│  Express API    │  (Port 3001)
-└────────┬────────┘
-         │
-    ┌────┴─────┬──────────┬──────────┐
-    │          │          │          │
-┌───▼──┐  ┌───▼──┐  ┌───▼──┐  ┌───▼──┐
-│MC #1 │  │MC #2 │  │MC #3 │  │MC #N │  (Docker containers)
-│Paper │  │Paper │  │Paper │  │...   │
-└───┬──┘  └───┬──┘  └───┬──┘  └───┬──┘
-    │         │         │         │
-┌───▼─────────▼─────────▼─────────▼───┐
-│     Host Volumes (Persistent Data)   │
-└──────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                        Web Browser                          │
+└─────────────────────────┬───────────────────────────────────┘
+                          │ HTTP / WebSocket
+┌─────────────────────────▼───────────────────────────────────┐
+│                    Nginx (Frontend)                         │
+│                      Port 3000                              │
+└─────────────────────────┬───────────────────────────────────┘
+                          │ Proxy
+┌─────────────────────────▼───────────────────────────────────┐
+│                  Express.js (Backend API)                    │
+│                      Port 3001                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │   SQLite    │  │   Docker    │  │   WebSocket Server  │  │
+│  │  Database   │  │     API     │  │   (Console/Logs)    │  │
+│  └─────────────┘  └──────┬──────┘  └─────────────────────┘  │
+└──────────────────────────┼──────────────────────────────────┘
+                           │
+        ┌──────────────────┼──────────────────┐
+        │                  │                  │
+┌───────▼───────┐  ┌───────▼───────┐  ┌───────▼───────┐
+│   MC Server   │  │   MC Server   │  │   MC Server   │
+│    (Paper)    │  │   (Forge)     │  │   (Fabric)    │
+│  Port 25565   │  │  Port 25566   │  │  Port 25567   │
+└───────┬───────┘  └───────┬───────┘  └───────┬───────┘
+        │                  │                  │
+┌───────▼──────────────────▼──────────────────▼───────┐
+│              Host Volumes (Persistent Data)          │
+│         ./data/servers/<server-id>/                  │
+└─────────────────────────────────────────────────────┘
 ```
+
+### Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| Frontend | React, Vite, Axios |
+| Backend | Node.js, Express.js |
+| Database | SQLite (better-sqlite3) |
+| Containers | Docker, dockerode |
+| Real-time | WebSocket (ws) |
+| MC Images | [itzg/minecraft-server](https://github.com/itzg/docker-minecraft-server) |
+
+## Scripts
+
+Utility scripts are provided in the `scripts/` directory:
+
+| Script | Description |
+|--------|-------------|
+| `./scripts/start.sh` | Start the application |
+| `./scripts/stop.sh` | Stop all services |
+| `./scripts/status.sh` | Show service status |
+| `./scripts/logs.sh` | View application logs |
+| `./scripts/build.sh` | Build Docker images |
+| `./scripts/push.sh` | Push images to registry |
+| `./scripts/clean.sh` | Remove containers, images, and data |
+| `./scripts/release.sh` | Build and push a release |
 
 ## Project Structure
 
 ```
 mc-server-manager/
-├── backend/              # Node.js/Express API
+├── backend/                 # Node.js API server
 │   └── src/
-│       ├── api/         # REST endpoints
-│       ├── models/      # Database models (SQLite)
-│       ├── services/    # Business logic
-│       ├── utils/       # Utilities
-│       ├── websocket/   # WebSocket console
-│       └── server.js    # Entry point
-├── frontend/            # React UI
+│       ├── api/            # REST API routes
+│       ├── models/         # SQLite models
+│       ├── services/       # Business logic
+│       ├── utils/          # Utilities
+│       └── websocket/      # WebSocket handlers
+├── frontend/               # React application
 │   └── src/
-│       ├── components/  # React components
-│       ├── pages/       # Page views
-│       └── services/    # API/WebSocket clients
-├── data/                # Application data
-│   ├── database/        # SQLite database
-│   └── servers/         # Server volumes
-└── docs/                # Documentation
+│       ├── components/     # Reusable components
+│       ├── pages/          # Page views
+│       └── services/       # API clients
+├── scripts/                # Utility scripts
+├── data/                   # Application data (gitignored)
+│   ├── database/          # SQLite database
+│   ├── servers/           # Server volumes
+│   ├── modpacks/          # Modpack library
+│   └── backups/           # Server backups
+└── docs/                   # Documentation
 ```
 
-## Configuration
+## Contributing
 
-### Backend Environment Variables
+Contributions are welcome! Please read our contributing guidelines before submitting a pull request.
 
-Edit `backend/.env`:
+### Development Workflow
 
-```env
-PORT=3001                              # API server port
-DATABASE_PATH=./data/database/servers.db  # SQLite database
-SERVERS_DATA_PATH=./data/servers       # Server data directory
-PORT_RANGE_START=25565                 # First server port
-PORT_RANGE_END=25600                   # Last server port
-LOG_LEVEL=info                         # Logging level
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Make your changes
+4. Run tests: `npm run test`
+5. Commit your changes: `git commit -m 'Add my feature'`
+6. Push to the branch: `git push origin feature/my-feature`
+7. Open a pull request
+
+### Running Tests
+
+```bash
+cd backend
+npm run test
 ```
 
-### Build Script Environment Variables
+### Code Style
 
-The image build helper (`build/build-image.sh` or `npm run build:image`) reads `build/.env`. Copy `.env.example` and customize these values before building:
-
-- `IMAGE_NAME` / `IMAGE_TAG`: name of the resulting Docker image.
-- `NODE_VERSION`: base Node.js image tag (defaults to `20-alpine`).
-- `PORT`, `DATABASE_PATH`, `SERVERS_DATA_PATH`, `MODPACKS_PATH`: default in-container paths.
-- `SERVERS_DATA_PATH_HOST`: **host** path used when spawning Minecraft containers. This must match the path you bind into the manager container (for example `/opt/mc-manager/data/servers`).
-- `PUBLIC_SERVER_HOST`, `PORT_RANGE_START`, `PORT_RANGE_END`, `LOG_LEVEL`: runtime defaults that can still be overridden at `docker run` time with `-e`.
-- `FRONTEND_DIST_PATH`: where the backend should serve the bundled React app inside the container (`/app/frontend` by default).
-
-### Port Management
-
-- Server ports are automatically assigned from the configured range
-- Default range: 25565-25600 (36 possible servers)
-- Ports are tracked in the database to prevent conflicts
-
-## Docker Deployment Details
-
-### Architecture
-
-When running with Docker Compose:
-- **Frontend**: Nginx serving static React build (port 3000)
-- **Backend**: Node.js API server (internal, proxied through Nginx)
-- **Minecraft Servers**: Created by backend, run as separate containers on host network
-
-### Volumes
-
-The following directories are persisted:
-- `./data/database/`: SQLite database
-- `./data/servers/`: Minecraft server data volumes
-- `./logs/`: Application logs
-
-### Environment Variables
-
-Backend environment variables can be customized in `docker-compose.yml` under the `backend` service.
-
-### Networking
-
-- Frontend container exposes port 3000
-- Backend communicates with frontend via internal network
-- Minecraft servers are created on the host network to expose their ports (25565+)
-
-### Production Considerations
-
-For production deployment:
-
-1. **Use a reverse proxy** (like Traefik or Nginx) with SSL:
-   ```yaml
-   # Add to docker-compose.yml
-   labels:
-     - "traefik.enable=true"
-     - "traefik.http.routers.mc-manager.rule=Host(`your-domain.com`)"
-     - "traefik.http.routers.mc-manager.tls=true"
-   ```
-
-2. **Set strong secrets** and environment variables
-
-3. **Configure backups** for the `./data` directory
-
-4. **Monitor resource usage** with Docker stats
-
-5. **Set up log rotation** for application logs
+- Use ESLint configuration provided
+- Write meaningful commit messages
+- Add tests for new features
+- Update documentation as needed
 
 ## Troubleshooting
 
 ### Docker Permission Denied
 
-If you get a Docker permission error:
 ```bash
+# Add your user to the docker group
 sudo usermod -aG docker $USER
-# Then log out and log back in
+# Log out and back in
 ```
 
-### Docker Compose: Backend Can't Access Docker Socket
+### Minecraft Server Won't Start
 
-Ensure the Docker socket is mounted correctly in `docker-compose.yml`:
-```yaml
-volumes:
-  - /var/run/docker.sock:/var/run/docker.sock
-```
-
-### Ports Already in Use
-
-If port 3000 is already in use, change it in `docker-compose.yml`:
-```yaml
-ports:
-  - "8080:80"  # Changed from 3000:80
-```
-
-### Server Won't Start
-
-1. Check Docker is running: `docker ps`
-2. Check logs: View console in the UI or `docker logs mc-<server-id>`
-3. Verify port isn't in use: `sudo lsof -i :<port>`
+1. Check the Console tab for error logs
+2. Verify sufficient memory is allocated
+3. Check if the port is already in use: `lsof -i :25565`
+4. Ensure Docker is running: `docker ps`
 
 ### WebSocket Connection Failed
 
-1. Ensure backend is running on port 3001
+1. Ensure the backend is running on port 3001
 2. Check browser console for errors
-3. Verify server is in "running" state
+3. Verify no firewall is blocking WebSocket connections
 
 ### Database Locked
 
-If you get a database locked error:
 ```bash
-# Stop all processes
-pkill -f "node.*server.js"
+# Stop all services
+./scripts/stop.sh
 
 # Remove lock files
 rm data/database/*.db-shm data/database/*.db-wal
 
 # Restart
-npm run dev
+./scripts/start.sh
 ```
 
-## Security Considerations
+## Security
 
-- Servers run as non-root in Docker containers
-- Input validation on all API endpoints
-- Restricted port range (25565-25600)
-- Isolated server volumes
-- No sensitive data exposed in error messages
+- **Isolation**: Each Minecraft server runs in its own Docker container
+- **Non-root**: Containers run as non-root users
+- **Validation**: All user inputs are validated and sanitized
+- **File Access**: Operations are restricted to server-specific directories
+- **Authentication**: Optional login protection available
+
+### Reporting Security Issues
+
+Please report security vulnerabilities via GitHub Security Advisories rather than public issues.
 
 ## Roadmap
 
-### Phase 2 (Planned)
-- Multi-server type support (Forge, Fabric)
-- Configuration file editor
-- Mod/plugin upload and management
-- Manual backup/restore
-
-### Phase 3 (Planned)
-- Automated scheduled backups
-- User authentication
-- Monitoring dashboard
-- Modpack integration (CurseForge/Modrinth)
-
-### Phase 4 (Planned)
-- Performance optimizations
-- Security hardening
-- Deployment guides
-- Docker Compose production setup
-
-## Implementation Plan for Upcoming Features
-
-To prepare the project for public release and broader modded-server workflows, the following roadmap items have detailed plans that can be implemented incrementally.
-
-### 1. Expanded Mod Loader Support (Forge & Fabric)
-- **Backend**: Extend the server creation flow to accept Forge and Fabric parameters (loader version, installer URL, optional modpack metadata). Update `dockerService` so the container env vars (e.g., `TYPE=FORGE`, `TYPE=FABRIC`) map to the itzg image capabilities, and ensure loader-specific files (installer, mods, config) are mounted in the per-server volume structure described in `modpacks/<loader>/`.
-- **Saved modpacks**: Normalize the `modpacks` directory to `modpacks/{paper,forge,fabric}/...` and update upload/list endpoints so the loader type determines the persistence path. Add validation that ensures the zip contains the expected layout (e.g., `mods/`, `config/`, optional `overrides/`).
-- **UI**: Update `CreateServerForm` to surface loader choice + loader-specific fields, surface loader metadata in cards/details, and allow selecting from saved modpacks filtered by loader.
-
-### 2. Individual Mod Management
-- **Backend**: Add endpoints for listing, uploading, enabling/disabling, and deleting mods per server (e.g., `/servers/:id/mods`). This is essentially a specialized wrapper around the file explorer but lets the UI understand mod/plug-in metadata (filename, enabled flag, last updated).
-- **UI**: Introduce a “Mods” tab in `ServerDetails` with drag-and-drop upload, status toggles, and delete actions. Reuse the ModUploader component but provide inline feedback (success/failure, modpack conflicts).
-- **Validation**: Optionally parse fabric/forge `.jar` manifest to show mod name/version; warn when a mod duplicates another version.
-
-### 3. Modern Minecraft-Themed UI Refresh
-- **Design direction**: Adopt a clean “technical” Minecraft aesthetic (dark slate palette, blocky accent colors, subtle gradients inspired by the launcher). Create a shared theme file (CSS variables or Tailwind config) to consolidate colors, fonts, and spacing.
-- **Components**: Refresh Server Cards, tabs, and dialogs with consistent spacing, iconography, and backgrounds (e.g., pixel grid textures, subtle noise overlays). Consider adding a hero header with key server stats and call-to-action buttons.
-- **Responsiveness**: Ensure the refreshed layout maintains accessibility (contrast ratios) and handles tablet/mobile breakpoints gracefully.
-
-### 4. Backup & Restore
-- **Backend**: Implement `/servers/:id/backups` endpoints to trigger zip/tarball creation of the server directory (world, configs, mods) and to list and download stored archives. Backups should live under `data/backups/<serverId>/timestamp.zip`. Provide a restore endpoint that stops the server, extracts the archive, and restarts it.
-- **Scheduling (optional)**: Introduce a lightweight cron/task runner to support automatic daily/weekly backups with retention settings stored per server.
-- **UI**: Add a Backup panel that lists available archives, includes “Create backup” and “Restore” buttons, and exposes download links.
-
-### 5. Login & Access Control
-- **Configuration**: Add env vars (`ENABLE_LOGIN`, `LOGIN_USERNAME`, `LOGIN_PASSWORD`, `JWT_SECRET`, etc.) that drive whether auth is required. Defaults can keep the app open for self-hosted development.
-- **Backend**: Introduce a minimal auth service that issues JWTs via a `/api/auth/login` route. Protect all API routes with middleware when auth is enabled. Tokens can be short-lived and stored in HttpOnly cookies.
-- **Frontend**: Build a single-page login form that is shown before the dashboard when `ENABLE_LOGIN` is true (check via `/api/health`). Store session info using context and intercept axios requests to attach cookies/headers.
-
-### 6. CurseForge Modpack Imports
-- **Backend**: Create a `/modpacks/import` endpoint that accepts a CurseForge project or direct zip URL. Use the CurseForge API (or simple HTTP download when the URL is already signed) to fetch the zip, validate it, and extract into the proper loader bucket under `modpacks/`.
-- **UI**: Extend the Modpack Library to include an “Import from CurseForge URL” form. Show progress and result status, then refresh the loader-specific modpack list.
-- **Server creation**: Allow the create-server form to accept a CurseForge URL directly so new servers can be bootstrapped from a remote pack in a single step.
+- [ ] Scheduled server restarts
+- [ ] Multi-user support with roles
+- [ ] Server templates
+- [ ] Prometheus metrics export
+- [ ] Kubernetes deployment support
+- [ ] Mobile-responsive UI improvements
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Contributing
+## Acknowledgments
 
-This is currently a personal project. If you'd like to contribute, please open an issue first to discuss proposed changes.
+- [itzg/docker-minecraft-server](https://github.com/itzg/docker-minecraft-server) — The excellent Docker image that powers our Minecraft containers
+- [CurseForge](https://www.curseforge.com/) & [Modrinth](https://modrinth.com/) — Mod distribution platforms
+- All contributors and users of this project
 
-## Support
+---
 
-For issues or questions, please check:
-1. This README
-2. The `/docs` directory for additional documentation
-3. GitHub issues (if repository is public)
+<p align="center">
+  Made with ❤️ for the Minecraft community
+</p>

@@ -1,16 +1,25 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import ServerStatus from '../components/ServerStatus';
-import ServerConsole from '../components/ServerConsole';
-import ModUploader from '../components/ModUploader';
-import ServerSettingsForm from '../components/ServerSettingsForm';
-import ServerIconUploader from '../components/ServerIconUploader';
-import FileExplorer from '../components/FileExplorer';
-import ModpackLibrary from '../components/ModpackLibrary';
-import ServerBackups from '../components/ServerBackups';
-import { serverApi } from '../services/api';
-import { formatServerType, getServerAddress } from '../utils/serverTypes';
+import { useParams, useNavigate } from 'react-router-dom';
+import TabNavigation from '../components/TabNavigation';
+import OverviewTab from './tabs/OverviewTab';
+import ConsoleTab from './tabs/ConsoleTab';
+import ModsTab from './tabs/ModsTab';
+import PlayersTab from './tabs/PlayersTab';
+import SettingsTab from './tabs/SettingsTab';
+import BackupsTab from './tabs/BackupsTab';
+import NotificationsTab from './tabs/NotificationsTab';
+import { serverApi, playerApi } from '../services/api';
 import './ServerDetails.css';
+
+const TABS = [
+  { id: 'overview', label: 'Overview', icon: '\u2139\uFE0F' },
+  { id: 'console', label: 'Console', icon: '\uD83D\uDCBB' },
+  { id: 'mods', label: 'Mods', icon: '\uD83D\uDCE6' },
+  { id: 'players', label: 'Players', icon: '\uD83D\uDC65' },
+  { id: 'settings', label: 'Settings', icon: '\u2699\uFE0F' },
+  { id: 'backups', label: 'Backups', icon: '\uD83D\uDCBE' },
+  { id: 'notifications', label: 'Notifications', icon: '\uD83D\uDD14' }
+];
 
 function ServerDetails() {
   const { id } = useParams();
@@ -18,7 +27,10 @@ function ServerDetails() {
   const [server, setServer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [playerCount, setPlayerCount] = useState(null);
 
+  // Fetch server data
   useEffect(() => {
     const fetchServer = async () => {
       try {
@@ -39,6 +51,30 @@ function ServerDetails() {
     const interval = setInterval(fetchServer, 5000);
     return () => clearInterval(interval);
   }, [id]);
+
+  // Fetch player count when server is running
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      if (server?.status === 'running') {
+        try {
+          const data = await playerApi.getOnlinePlayers(id);
+          setPlayerCount(data.online);
+        } catch {
+          setPlayerCount(null);
+        }
+      } else {
+        setPlayerCount(null);
+      }
+    };
+
+    fetchPlayers();
+
+    // Poll for player count every 15 seconds
+    if (server?.status === 'running') {
+      const interval = setInterval(fetchPlayers, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [id, server?.status]);
 
   const handleAction = async (action) => {
     try {
@@ -75,6 +111,31 @@ function ServerDetails() {
     }
   };
 
+  const handleServerUpdated = (updated) => {
+    setServer((prev) => ({
+      ...prev,
+      ...updated,
+      stats: updated?.stats ?? prev?.stats
+    }));
+  };
+
+  const getStatusClass = (status) => {
+    switch (status) {
+      case 'running':
+        return 'status-running';
+      case 'stopped':
+        return 'status-stopped';
+      case 'starting':
+      case 'stopping':
+        return 'status-transitioning';
+      case 'error':
+      case 'unhealthy':
+        return 'status-error';
+      default:
+        return '';
+    }
+  };
+
   if (loading && !server) {
     return <div className="loading-page">Loading server...</div>;
   }
@@ -93,25 +154,17 @@ function ServerDetails() {
     return null;
   }
 
-  const getStatusClass = (status) => {
-    switch (status) {
-      case 'running':
-        return 'status-running';
-      case 'stopped':
-        return 'status-stopped';
-      case 'starting':
-      case 'stopping':
-        return 'status-transitioning';
-      default:
-        return '';
-    }
-  };
+  // Build badges object for tabs
+  const badges = {};
+  if (playerCount !== null && playerCount > 0) {
+    badges.players = playerCount;
+  }
 
   return (
     <div className="server-details">
       <div className="details-header">
         <button className="back-btn" onClick={() => navigate('/')}>
-          ← Back
+          &#8592; Back
         </button>
 
         <div className="header-content">
@@ -123,12 +176,12 @@ function ServerDetails() {
           </div>
 
           <div className="header-actions">
-            {server.status === 'stopped' && (
+            {(server.status === 'stopped' || server.status === 'error') && (
               <button
                 className="btn btn-success"
                 onClick={() => handleAction('start')}
               >
-                Start Server
+                {server.status === 'error' ? 'Retry Start' : 'Start Server'}
               </button>
             )}
 
@@ -159,91 +212,45 @@ function ServerDetails() {
         </div>
       </div>
 
-      <div className="server-info-grid">
-        <div className="info-card">
-          <h3>Server Information</h3>
-          <div className="info-grid">
-            <div className="info-item">
-              <span className="info-label">Server ID:</span>
-              <span className="info-value">{server.id}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Type:</span>
-              <span className="info-value">{formatServerType(server.type)}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Version:</span>
-              <span className="info-value">{server.version}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Port:</span>
-              <span className="info-value">{server.port}</span>
-            </div>
-            <div className="info-item">
-              <span className="info-label">Memory:</span>
-              <span className="info-value">{server.memory}</span>
-            </div>
-            {server.connectionInfo && (
-              <div className="info-item">
-                <span className="info-label">Server Address:</span>
-                <span className="info-value">{getServerAddress(server)}</span>
-              </div>
-            )}
-            {server.cpu_limit && (
-              <div className="info-item">
-                <span className="info-label">CPU Limit:</span>
-                <span className="info-value">{server.cpu_limit} cores</span>
-              </div>
-            )}
-          </div>
-        </div>
+      <TabNavigation
+        tabs={TABS}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        badges={badges}
+      />
 
-        <ServerStatus serverId={id} />
-      </div>
+      <div className="tab-content">
+        {activeTab === 'overview' && (
+          <OverviewTab
+            server={server}
+            onAction={handleAction}
+            onServerUpdated={handleServerUpdated}
+          />
+        )}
 
-      <div className="server-settings-grid">
-        <ServerSettingsForm
-          serverId={id}
-          initialSettings={server.settings}
-          onUpdated={(updated) =>
-            setServer((prev) => ({
-              ...prev,
-              ...updated,
-              stats: updated?.stats ?? prev?.stats
-            }))
-          }
-        />
-        <div className="server-config-side">
-          <ServerIconUploader serverId={id} />
-          <ModUploader serverId={id} serverType={server.type} />
-        </div>
-      </div>
+        {activeTab === 'console' && (
+          <ConsoleTab serverId={server.id} />
+        )}
 
-      <div className="file-explorer-section">
-        <FileExplorer serverId={id} />
-      </div>
+        {activeTab === 'mods' && (
+          <ModsTab server={server} />
+        )}
 
-      <div className="modpack-library-section">
-        <div className="section-heading">
-          <h3>Server Modpacks</h3>
-          <Link to="/modpacks" className="link-button">
-            Manage Library
-          </Link>
-        </div>
-        <ModpackLibrary
-          initialType={server.type}
-          serverId={id}
-          serverStatus={server.status}
-          showManagement={false}
-        />
-      </div>
+        {activeTab === 'players' && (
+          <PlayersTab serverId={server.id} serverStatus={server.status} />
+        )}
 
-      <div className="backups-section">
-        <ServerBackups serverId={id} serverStatus={server.status} />
-      </div>
+        {activeTab === 'settings' && (
+          <SettingsTab server={server} onUpdated={handleServerUpdated} />
+        )}
 
-      <div className="console-section">
-        <ServerConsole serverId={id} />
+        {activeTab === 'backups' && (
+          <BackupsTab serverId={server.id} serverStatus={server.status} />
+        )}
+
+        {activeTab === 'notifications' && (
+          <NotificationsTab serverId={server.id} />
+        )}
       </div>
     </div>
   );

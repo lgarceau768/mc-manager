@@ -1,0 +1,62 @@
+services:
+  # Backend API
+  backend:
+    image: ltgarc768/mc-manager:api_latest
+    container_name: mc-manager-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_PATH=/app/data/database/servers.db
+      - SERVERS_DATA_PATH=/app/data/servers
+      - SERVERS_DATA_PATH_HOST=${PWD}/data/servers
+      - MODPACKS_PATH=/app/data/modpacks
+      - BACKUPS_PATH=/app/data/backups
+      - DOCKER_SOCKET=/var/run/docker.sock
+      - PUBLIC_SERVER_HOST=${PUBLIC_SERVER_HOST:-craft.bean}
+      - PORT_RANGE_START=25565
+      - PORT_RANGE_END=25600
+      - LOG_LEVEL=info
+    volumes:
+      # Mount Docker socket to manage containers
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persist all data (database, servers, modpacks, backups)
+      - ./data:/app/data
+      # Persist logs
+      - ./logs:/app/logs
+      # Temp directory for downloads
+      - ./temp:/app/temp
+    networks:
+      - mc-manager-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend UI
+  frontend:
+    image: ltgarc768/mc-manager:ui_latest
+    container_name: mc-manager-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - mc-manager-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  mc-manager-network:
+    driver: bridge
+
+# Note: Minecraft servers will be created by the backend
+# and will automatically join the host network to expose their ports

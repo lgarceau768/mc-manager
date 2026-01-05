@@ -8,7 +8,8 @@ function ModpackLibrary({
   initialType = 'PAPER',
   serverId = null,
   serverStatus = null,
-  showManagement = true
+  showManagement = true,
+  showDownload = false
 }) {
   const [selectedType, setSelectedType] = useState(initialType);
   const [modpacks, setModpacks] = useState([]);
@@ -166,6 +167,16 @@ function ModpackLibrary({
                     >
                       {applying === pack.filename ? 'Applying...' : 'Apply'}
                     </button>
+                  )}
+                  {showDownload && (
+                    <a
+                      href={serverApi.getModpackDownloadUrl(selectedType, pack.filename)}
+                      className="btn btn-sm btn-download"
+                      download
+                      title="Download this modpack"
+                    >
+                      Download
+                    </a>
                   )}
                   {showManagement && (
                     <button

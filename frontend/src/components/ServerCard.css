@@ -113,3 +113,42 @@
   background-color: #dc3545;
   color: white;
 }
+
+.status-error {
+  background-color: #f8d7da;
+  color: #dc3545;
+  border: 1px solid #f5c6cb;
+}
+
+.server-card-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.server-card-error .error-icon {
+  color: #dc3545;
+  font-size: 1rem;
+}
+
+.server-card-error .error-message {
+  flex: 1;
+  color: #b91c1c;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.server-card-error .error-code {
+  font-size: 0.75rem;
+  color: #6b7280;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}

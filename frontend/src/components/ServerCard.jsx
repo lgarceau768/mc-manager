@@ -15,6 +15,9 @@ function ServerCard({ server, onUpdate, onDelete }) {
       case 'starting':
       case 'stopping':
         return 'status-transitioning';
+      case 'error':
+      case 'unhealthy':
+        return 'status-error';
       default:
         return '';
     }
@@ -93,13 +96,23 @@ function ServerCard({ server, onUpdate, onDelete }) {
         </div>
       </div>
 
+      {server.containerStatus?.error && (
+        <div className="server-card-error" onClick={(e) => e.stopPropagation()}>
+          <span className="error-icon">⚠</span>
+          <span className="error-message">{server.containerStatus.error}</span>
+          {server.containerStatus?.exitCode !== null && (
+            <span className="error-code">Exit code: {server.containerStatus.exitCode}</span>
+          )}
+        </div>
+      )}
+
       <div className="server-card-actions" onClick={(e) => e.stopPropagation()}>
-        {server.status === 'stopped' && (
+        {(server.status === 'stopped' || server.status === 'error') && (
           <button
             className="btn btn-success"
             onClick={() => handleAction('start')}
           >
-            Start
+            {server.status === 'error' ? 'Retry' : 'Start'}
           </button>
         )}
 

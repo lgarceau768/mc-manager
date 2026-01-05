@@ -1,12 +1,13 @@
-import path from 'path';
-import fs from 'fs';
+import path from 'node:path';
+import fs from 'node:fs';
 import archiver from 'archiver';
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from 'node:url';
 import AdmZip from 'adm-zip';
 import dockerService from './dockerService.js';
 import Server from '../models/Server.js';
 import logger from '../utils/logger.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
+import notificationService from './notificationService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -93,6 +94,12 @@ class BackupService {
 
         logger.info(`Backup created successfully: ${backupFileName}`);
 
+        // Send success notification
+        notificationService.notify(serverId, 'backupComplete', {
+          serverName: server.name,
+          backupName: backupFileName
+        }).catch(err => logger.warn(`Failed to send backup notification: ${err.message}`));
+
         return metadata;
       } finally {
         // Resume world saving if it was running
@@ -107,6 +114,16 @@ class BackupService {
       }
     } catch (error) {
       logger.error(`Failed to create backup: ${error.message}`);
+
+      // Send failure notification
+      const server = Server.findById(serverId);
+      if (server) {
+        notificationService.notify(serverId, 'backupFailed', {
+          serverName: server.name,
+          error: error.message
+        }).catch(err => logger.warn(`Failed to send backup failure notification: ${err.message}`));
+      }
+
       throw error;
     }
   }
