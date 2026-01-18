@@ -3,9 +3,9 @@ import ModSearchResult from './ModSearchResult';
 import { modApi } from '../services/api';
 import './ModSearch.css';
 
-function ModSearch({ serverId, serverType, serverVersion, serverStatus }) {
+function ModSearch({ serverId, serverType, serverVersion, serverStatus, onInstallSuccess }) {
   const [source, setSource] = useState('modrinth');
-  const [sources, setSources] = useState(['modrinth']);
+  const [sources, setSources] = useState(['modrinth', 'curseforge']);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -58,6 +58,9 @@ function ModSearch({ serverId, serverType, serverVersion, serverStatus }) {
     try {
       await modApi.installModToServer(serverId, source, mod.id, version.id);
       alert(`Successfully installed ${mod.name}`);
+      if (onInstallSuccess) {
+        onInstallSuccess();
+      }
     } catch (err) {
       alert(`Failed to install mod: ${err.message}`);
     }

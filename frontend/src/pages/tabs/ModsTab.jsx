@@ -37,6 +37,7 @@ function ModsTab({ server }) {
             serverId={server.id}
             serverType={server.type}
             serverStatus={server.status}
+            serverVersion={server.version}
           />
         )}
 

@@ -2,15 +2,17 @@ import { useState, useEffect } from 'react';
 import ModUploader from './ModUploader';
 import ModInfoModal from './ModInfoModal';
 import ModIcon from './ModIcon';
+import ModSearch from './ModSearch';
 import { modApi } from '../services/api';
 import './InstalledModsList.css';
 
-function InstalledModsList({ serverId, serverType, serverStatus }) {
+function InstalledModsList({ serverId, serverType, serverStatus, serverVersion }) {
   const [mods, setMods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedMod, setSelectedMod] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(null);
+  const [showSearch, setShowSearch] = useState(false);
 
   const loadMods = async () => {
     try {
@@ -131,8 +133,33 @@ function InstalledModsList({ serverId, serverType, serverStatus }) {
         <div className="no-mods">
           <p>No {serverType === 'PAPER' ? 'plugins' : 'mods'} installed</p>
           <p className="hint">
-            Upload a .jar file or search for mods in the Search tab
+            Upload a .jar file or use the search section below to find {serverType === 'PAPER' ? 'plugins' : 'mods'}
           </p>
+        </div>
+      )}
+
+      {!loading && serverType !== 'PAPER' && (
+        <div className="search-toggle-section">
+          <button
+            className={`search-toggle-btn ${showSearch ? 'expanded' : ''}`}
+            onClick={() => setShowSearch(!showSearch)}
+            title={showSearch ? 'Hide search' : 'Show search'}
+          >
+            <span className="toggle-icon">{showSearch ? '▼' : '▶'}</span>
+            <span className="toggle-text">Search for {serverType === 'PAPER' ? 'Plugins' : 'Mods'}</span>
+          </button>
+
+          {showSearch && (
+            <div className="embedded-search">
+              <ModSearch
+                serverId={serverId}
+                serverType={serverType}
+                serverVersion={serverVersion}
+                serverStatus={serverStatus}
+                onInstallSuccess={loadMods}
+              />
+            </div>
+          )}
         </div>
       )}
 
