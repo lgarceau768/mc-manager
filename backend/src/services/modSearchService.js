@@ -266,7 +266,8 @@ class ModSearchService {
           downloadUrl: primaryFile?.url,
           fileSize: primaryFile?.size,
           releaseType: version.version_type,
-          uploadedAt: version.date_published
+          uploadedAt: version.date_published,
+          dependencies: version.dependencies || []
         };
       });
 
@@ -288,6 +289,90 @@ class ModSearchService {
       return this.getModrinthVersions(modId, gameVersion, modLoader);
     } else {
       throw new ValidationError(`Invalid source: ${source}`);
+    }
+  }
+
+  /**
+   * Get full details for a specific version including dependencies
+   */
+  async getVersionDetails(source, versionId) {
+    if (source === 'modrinth') {
+      return this.getModrinthVersionDetails(versionId);
+    } else if (source === 'curseforge') {
+      return this.getCurseForgeVersionDetails(versionId);
+    } else {
+      throw new ValidationError(`Invalid source: ${source}`);
+    }
+  }
+
+  /**
+   * Get Modrinth version details
+   */
+  async getModrinthVersionDetails(versionId) {
+    await modrinthRateLimiter.acquire();
+
+    try {
+      const response = await axios.get(`${MODRINTH_API_URL}/version/${versionId}`, {
+        headers: {
+          'User-Agent': this.userAgent
+        }
+      });
+
+      const version = response.data;
+      const primaryFile = version.files.find(f => f.primary) || version.files[0];
+
+      return {
+        id: version.id,
+        name: version.name,
+        versionNumber: version.version_number,
+        filename: primaryFile?.filename,
+        gameVersions: version.game_versions,
+        loaders: version.loaders,
+        downloadUrl: primaryFile?.url,
+        fileSize: primaryFile?.size,
+        releaseType: version.version_type,
+        uploadedAt: version.date_published,
+        dependencies: version.dependencies || []
+      };
+    } catch (error) {
+      logger.error(`Failed to get Modrinth version details: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get CurseForge version details
+   */
+  async getCurseForgeVersionDetails(versionId) {
+    if (!this.curseForgeApiKey) {
+      throw new ValidationError('CurseForge API key not configured');
+    }
+
+    await curseForgeRateLimiter.acquire();
+
+    try {
+      const response = await axios.get(`${CURSEFORGE_API_URL}/v1/mods/files/${versionId}`, {
+        headers: {
+          'x-api-key': this.curseForgeApiKey,
+          'Accept': 'application/json'
+        }
+      });
+
+      const file = response.data.data;
+      return {
+        id: file.id,
+        name: file.displayName,
+        filename: file.fileName,
+        gameVersions: file.gameVersions,
+        downloadUrl: file.downloadUrl,
+        fileSize: file.fileLength,
+        releaseType: this.getCurseForgeReleaseType(file.releaseType),
+        uploadedAt: file.fileDate,
+        dependencies: file.dependencies || []
+      };
+    } catch (error) {
+      logger.error(`Failed to get CurseForge version details: ${error.message}`);
+      throw error;
     }
   }
 

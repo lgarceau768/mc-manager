@@ -2,8 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import AdmZip from 'adm-zip';
+import crypto from 'crypto';
 import Server from '../models/Server.js';
 import modSearchService from './modSearchService.js';
+import modDependencyService from './modDependencyService.js';
 import logger from '../utils/logger.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
 
@@ -211,6 +213,28 @@ class ModManagementService {
       // Install to server
       await this.installMod(serverId, tempFilePath, version.filename);
 
+      // Track mod in database with source info
+      const fileHash = await this.computeFileHash(tempFilePath);
+      const stats = fs.statSync(tempFilePath);
+
+      try {
+        const modData = {
+          filename: version.filename,
+          source,
+          sourceProjectId: modId,
+          sourceVersionId: versionId,
+          name: version.name || modId,
+          version: version.versionNumber || versionId,
+          fileHash,
+          size: stats.size
+        };
+
+        await modDependencyService.trackInstalledMod(serverId, modData, []);
+      } catch (trackError) {
+        logger.error(`Failed to track installed mod in database: ${trackError.message}`);
+        // Don't fail the installation if tracking fails
+      }
+
       return {
         installed: version.filename,
         modId,
@@ -223,6 +247,91 @@ class ModManagementService {
         fs.unlinkSync(tempFilePath);
       }
     }
+  }
+
+  /**
+   * Install mod with automatic dependency resolution
+   */
+  async installModWithDependencies(serverId, source, modId, versionId, options = {}) {
+    const server = Server.findById(serverId);
+    if (!server) {
+      throw new NotFoundError(`Server not found: ${serverId}`);
+    }
+
+    // Build server context for dependency service
+    const serverContext = {
+      serverId,
+      serverVersion: server.version,
+      serverType: server.type,
+      serverMemory: server.memory
+    };
+
+    // Get full version details
+    const versionData = await modSearchService.getVersionDetails(source, versionId);
+    if (!versionData) {
+      throw new NotFoundError(`Version not found: ${versionId}`);
+    }
+
+    // Resolve dependencies
+    const dependencyTree = await modDependencyService.resolveDependencies(
+      source,
+      versionId,
+      serverContext
+    );
+
+    // Check compatibility
+    const compatibilityCheck = await modDependencyService.checkCompatibility(
+      source,
+      modId,
+      versionData,
+      serverContext
+    );
+
+    // Detect conflicts
+    const conflicts = await modDependencyService.detectConflicts(serverId, versionData, dependencyTree);
+
+    // Install main mod
+    const mainModResult = await this.installModFromSearch(serverId, source, modId, versionId);
+
+    // Install required dependencies if allowed
+    const installDeps = options.installDependencies !== false;
+    const installedDeps = [];
+    const failedDeps = [];
+
+    if (installDeps) {
+      for (const dep of dependencyTree.direct) {
+        if (dep.alreadyInstalled) continue;
+
+        try {
+          const depResult = await this.installModFromSearch(serverId, source, dep.projectId, dep.versionId);
+          installedDeps.push({
+            projectId: dep.projectId,
+            versionId: dep.versionId,
+            filename: depResult.installed
+          });
+        } catch (error) {
+          failedDeps.push({
+            projectId: dep.projectId,
+            versionId: dep.versionId,
+            error: error.message
+          });
+        }
+      }
+    }
+
+    return {
+      installed: mainModResult.installed,
+      modId,
+      versionId,
+      source,
+      dependencies: {
+        resolved: dependencyTree,
+        installed: installedDeps,
+        failed: failedDeps
+      },
+      compatibility: compatibilityCheck,
+      conflicts
+    };
   }
 
   /**
@@ -606,6 +715,28 @@ class ModManagementService {
       .replace(/[^a-zA-Z0-9._-]/g, '_')
       .replace(/_{2,}/g, '_')
       .substring(0, 255);
+  }
+
+  /**
+   * Compute SHA1 hash of a file
+   */
+  async computeFileHash(filePath) {
+    return new Promise((resolve, reject) => {
+      const hash = crypto.createHash('sha1');
+      const stream = fs.createReadStream(filePath);
+
+      stream.on('data', (data) => {
+        hash.update(data);
+      });
+
+      stream.on('end', () => {
+        resolve(hash.digest('hex'));
+      });
+
+      stream.on('error', (error) => {
+        reject(error);
+      });
+    });
   }
 }
 

@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { modApi } from '../services/api';
+import ModDependencyWarning from './ModDependencyWarning';
 import './ModSearchResult.css';
 
-function ModSearchResult({ mod, source, serverVersion, modLoader, onInstall, serverStatus }) {
+function ModSearchResult({ mod, source, serverVersion, modLoader, onInstall, serverStatus, serverId }) {
   const [showVersions, setShowVersions] = useState(false);
   const [versions, setVersions] = useState([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [showDependencyWarning, setShowDependencyWarning] = useState(false);
+  const [dependencyCheckResult, setDependencyCheckResult] = useState(null);
+  const [pendingInstallation, setPendingInstallation] = useState(null);
 
   const formatNumber = (num) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -46,10 +50,58 @@ function ModSearchResult({ mod, source, serverVersion, modLoader, onInstall, ser
 
     try {
       setInstalling(true);
-      await onInstall(mod, version);
+      setPendingInstallation({ mod, version });
+
+      // Check for compatibility and dependencies
+      const checkResult = await modApi.checkModInstallation(
+        serverId,
+        source,
+        mod.id,
+        version.id
+      );
+
+      setDependencyCheckResult(checkResult);
+
+      // Show warning if there are issues, otherwise proceed directly
+      if (
+        checkResult.warnings?.length > 0 ||
+        checkResult.conflicts?.length > 0 ||
+        (checkResult.dependencies?.direct?.length > 0 &&
+         checkResult.dependencies.direct.some(d => !d.alreadyInstalled))
+      ) {
+        setShowDependencyWarning(true);
+      } else {
+        // No issues, proceed with installation
+        await proceedWithInstallation(mod, version);
+      }
+    } catch (err) {
+      alert(`Failed to check mod compatibility: ${err.message}`);
+      setInstalling(false);
+      setPendingInstallation(null);
+    }
+  };
+
+  const proceedWithInstallation = async (modToInstall, versionToInstall) => {
+    try {
+      await onInstall(modToInstall, versionToInstall);
+      setShowDependencyWarning(false);
+      setPendingInstallation(null);
     } finally {
       setInstalling(false);
     }
+  };
+
+  const handleProceedDependencies = async () => {
+    if (!pendingInstallation) return;
+    const { mod: modToInstall, version: versionToInstall } = pendingInstallation;
+    await proceedWithInstallation(modToInstall, versionToInstall);
+  };
+
+  const handleCancelDependencies = () => {
+    setShowDependencyWarning(false);
+    setDependencyCheckResult(null);
+    setPendingInstallation(null);
+    setInstalling(false);
   };
 
   const handleInstallLatest = async () => {
@@ -183,6 +235,14 @@ function ModSearchResult({ mod, source, serverVersion, modLoader, onInstall, ser
         <div className="no-versions">
           No compatible versions found for Minecraft {serverVersion}
         </div>
+      )}
+
+      {showDependencyWarning && dependencyCheckResult && (
+        <ModDependencyWarning
+          checkResult={dependencyCheckResult}
+          onProceed={handleProceedDependencies}
+          onCancel={handleCancelDependencies}
+        />
       )}
     </div>
   );

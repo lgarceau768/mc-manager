@@ -2,9 +2,11 @@ import express from 'express';
 import fs from 'fs';
 import modSearchService from '../../services/modSearchService.js';
 import modManagementService from '../../services/modManagementService.js';
+import modDependencyService from '../../services/modDependencyService.js';
 import playerService from '../../services/playerService.js';
 import logger from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
+import Server from '../../models/Server.js';
 
 const router = express.Router();
 
@@ -137,6 +139,70 @@ serverModsRouter.post('/install', async (req, res, next) => {
 });
 
 /**
+ * POST /api/servers/:id/mods/check-install
+ * Check compatibility and dependencies before installing (dry-run)
+ */
+serverModsRouter.post('/check-install', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { source, modId, versionId } = req.body;
+
+    if (!source || !modId || !versionId) {
+      throw new ValidationError('source, modId, and versionId are required');
+    }
+
+    const server = Server.findById(id);
+    if (!server) {
+      throw new ValidationError(`Server not found: ${id}`);
+    }
+
+    // Build server context
+    const serverContext = {
+      serverId: id,
+      serverVersion: server.version,
+      serverType: server.type,
+      serverMemory: server.memory
+    };
+
+    // Get full version details
+    const versionData = await modSearchService.getVersionDetails(source, versionId);
+    if (!versionData) {
+      throw new ValidationError(`Version not found: ${versionId}`);
+    }
+
+    // Resolve dependencies
+    const dependencyTree = await modDependencyService.resolveDependencies(
+      source,
+      versionId,
+      serverContext
+    );
+
+    // Check compatibility
+    const compatibilityCheck = await modDependencyService.checkCompatibility(
+      source,
+      modId,
+      versionData,
+      serverContext
+    );
+
+    // Detect conflicts
+    const conflicts = await modDependencyService.detectConflicts(id, versionData, dependencyTree);
+
+    res.json({
+      modId,
+      versionId,
+      source,
+      compatible: compatibilityCheck.compatible,
+      warnings: [...compatibilityCheck.warnings, ...compatibilityCheck.resourceConcerns],
+      dependencies: dependencyTree,
+      conflicts
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * GET /api/servers/:id/mods/:filename/info
  * Get detailed information about a specific mod
  */
@@ -146,6 +212,28 @@ serverModsRouter.get('/:filename/info', async (req, res, next) => {
     const modInfo = await modManagementService.getModInfo(id, decodeURIComponent(filename));
 
     res.json(modInfo);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/servers/:id/mods/:filename/dependencies
+ * Get dependency information for an installed mod
+ */
+serverModsRouter.get('/:filename/dependencies', async (req, res, next) => {
+  try {
+    const { id, filename } = req.params;
+    const depInfo = await modDependencyService.getInstalledModDependencies(
+      id,
+      decodeURIComponent(filename)
+    );
+
+    if (!depInfo) {
+      return res.status(404).json({ error: { message: 'Mod not found', code: 'NotFound' } });
+    }
+
+    res.json(depInfo);
   } catch (error) {
     next(error);
   }

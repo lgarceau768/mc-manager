@@ -470,6 +470,26 @@ export const modApi = {
   },
 
   /**
+   * Check mod installation compatibility and dependencies (dry-run)
+   */
+  checkModInstallation: async (serverId, source, modId, versionId) => {
+    const response = await api.post(`/servers/${serverId}/mods/check-install`, {
+      source,
+      modId,
+      versionId
+    });
+    return response.data;
+  },
+
+  /**
+   * Get dependencies for an installed mod
+   */
+  getModDependencies: async (serverId, filename) => {
+    const response = await api.get(`/servers/${serverId}/mods/${encodeURIComponent(filename)}/dependencies`);
+    return response.data;
+  },
+
+  /**
    * Get detailed info for a specific mod
    */
   getModInfo: async (serverId, filename) => {
