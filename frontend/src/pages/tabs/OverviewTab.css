@@ -1,0 +1,202 @@
+.overview-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.info-card {
+  background: var(--card-bg, white);
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.info-card h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: var(--text-primary, #1e293b);
+}
+
+.info-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color-light, #f1f5f9);
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-weight: 500;
+  color: var(--text-secondary, #64748b);
+}
+
+.info-value {
+  color: var(--text-primary, #1e293b);
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.info-value.address {
+  background: var(--bg-secondary, #f8fafc);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  user-select: all;
+}
+
+.quick-actions {
+  background: var(--card-bg, white);
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.quick-actions h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: var(--text-primary, #1e293b);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Container error card */
+.container-error-card {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.container-error-card h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: #b91c1c;
+}
+
+.error-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.container-error-card .error-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: #991b1b;
+  line-height: 1.5;
+}
+
+.container-error-card .error-icon {
+  color: #dc2626;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.container-error-card .error-info {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  padding-left: 1.5rem;
+}
+
+.container-error-card .error-info .label {
+  color: #7f1d1d;
+  font-weight: 500;
+}
+
+.container-error-card .error-info .value {
+  color: #991b1b;
+  font-family: monospace;
+}
+
+.container-error-card .error-hint {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #fca5a5;
+  font-size: 0.85rem;
+  color: #7f1d1d;
+}
+
+.status-error {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+/* Container missing card */
+.container-missing-card {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.container-missing-card h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: #b45309;
+}
+
+.missing-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.missing-details p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.missing-actions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #fcd34d;
+}
+
+/* Recreate success/error messages */
+.recreate-success {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  color: #166534;
+  font-size: 0.95rem;
+}
+
+.recreate-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  color: #b91c1c;
+  font-size: 0.95rem;
+}

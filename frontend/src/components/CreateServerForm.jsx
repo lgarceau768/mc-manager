@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { serverApi } from '../services/api';
 import { SERVER_TYPE_OPTIONS } from '../utils/serverTypes';
+import TemplateSuggestions from './TemplateSuggestions';
+import TemplateBrowser from './TemplateBrowser';
 import './CreateServerForm.css';
 
 const PORT_RANGE_START = Number(import.meta.env.VITE_PORT_RANGE_START || 25565);
@@ -54,6 +56,8 @@ function CreateServerForm({ onClose, onCreate }) {
   const [error, setError] = useState(null);
   const [modpackOptions, setModpackOptions] = useState([]);
   const [modpackLoading, setModpackLoading] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [showTemplateBrowser, setShowTemplateBrowser] = useState(false);
 
   const fetchModpacks = useCallback(async (type) => {
     try {
@@ -78,11 +82,19 @@ function CreateServerForm({ onClose, onCreate }) {
   );
 
   const currentVersionOptions = useMemo(() => {
+    // If modpack specifies versions, use those
     if (selectedModpack?.gameVersions?.length) {
       return sortVersionsDesc(selectedModpack.gameVersions);
     }
+    // If template specifies a version, include it in options
+    if (selectedTemplate?.minecraftVersion) {
+      const templateVersion = selectedTemplate.minecraftVersion;
+      if (!DEFAULT_VERSION_OPTIONS.includes(templateVersion)) {
+        return sortVersionsDesc([templateVersion, ...DEFAULT_VERSION_OPTIONS]);
+      }
+    }
     return DEFAULT_VERSION_OPTIONS;
-  }, [selectedModpack]);
+  }, [selectedModpack, selectedTemplate]);
 
   useEffect(() => {
     setFormData((prev) => {
@@ -105,12 +117,86 @@ function CreateServerForm({ onClose, onCreate }) {
         modpack: '',
         version: DEFAULT_VERSION
       }));
+      setSelectedTemplate(null);
       return;
     }
     setFormData((prev) => ({
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleTemplateSelect = (template) => {
+    setSelectedTemplate(template);
+    setUserOverrides({}); // Reset overrides when selecting new template
+
+    // Apply all template settings to form
+    const updates = {};
+
+    // Apply server type if template specifies it
+    if (template.serverType) {
+      const typeValue = template.serverType.toUpperCase();
+      if (SERVER_TYPE_OPTIONS.some(opt => opt.value === typeValue)) {
+        updates.type = typeValue;
+      }
+    }
+
+    // Apply memory if template specifies it
+    if (template.memory) {
+      // Normalize memory format (e.g., "4G", "4g", "4GB" -> "4G")
+      const memMatch = template.memory.match(/^(\d+)[gG][bB]?$/);
+      if (memMatch) {
+        updates.memory = `${memMatch[1]}G`;
+      } else {
+        updates.memory = template.memory;
+      }
+    }
+
+    // Apply minecraft version if template specifies it
+    if (template.minecraftVersion) {
+      updates.version = template.minecraftVersion;
+    }
+
+    // Apply CPU limit if template specifies it
+    if (template.cpuLimit) {
+      updates.cpuLimit = parseFloat(template.cpuLimit);
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        ...updates
+      }));
+    }
+  };
+
+  // Track which fields were set by template (and not yet overridden by user)
+  const [userOverrides, setUserOverrides] = useState({});
+
+  const templateFields = useMemo(() => {
+    if (!selectedTemplate) return {};
+    return {
+      type: !!selectedTemplate.serverType && !userOverrides.type,
+      memory: !!selectedTemplate.memory && !userOverrides.memory,
+      version: !!selectedTemplate.minecraftVersion && !userOverrides.version,
+      cpuLimit: !!selectedTemplate.cpuLimit && !userOverrides.cpuLimit
+    };
+  }, [selectedTemplate, userOverrides]);
+
+  // Warn user when they're about to override a template value
+  const handleFieldChange = (fieldName, value, originalHandler) => {
+    const templateHasField = selectedTemplate && (
+      (fieldName === 'type' && selectedTemplate.serverType) ||
+      (fieldName === 'memory' && selectedTemplate.memory) ||
+      (fieldName === 'version' && selectedTemplate.minecraftVersion) ||
+      (fieldName === 'cpuLimit' && selectedTemplate.cpuLimit)
+    );
+
+    if (templateHasField && !userOverrides[fieldName]) {
+      setUserOverrides(prev => ({ ...prev, [fieldName]: true }));
+    }
+
+    originalHandler(value);
   };
 
   const handleSubmit = async (e) => {
@@ -123,7 +209,8 @@ function CreateServerForm({ onClose, onCreate }) {
         ...formData,
         cpuLimit: formData.cpuLimit === '' ? undefined : Number(formData.cpuLimit),
         port: formData.port === '' ? undefined : Number(formData.port),
-        modpack: formData.modpack || undefined
+        modpack: formData.modpack || undefined,
+        templateId: selectedTemplate?.id || undefined
       };
       const newServer = await serverApi.createServer(payload);
       onCreate(newServer);
@@ -159,8 +246,11 @@ function CreateServerForm({ onClose, onCreate }) {
             <small>Alphanumeric characters and hyphens only (3-32 chars)</small>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="type">Server Type *</label>
+          <div className={`form-group ${templateFields.type ? 'from-template' : ''}`}>
+            <label htmlFor="type">
+              Server Type *
+              {templateFields.type && <span className="template-badge">from template</span>}
+            </label>
             <select
               id="type"
               name="type"
@@ -174,7 +264,11 @@ function CreateServerForm({ onClose, onCreate }) {
                 </option>
               ))}
             </select>
-            <small>Choose the mod loader/platform to install</small>
+            <small>
+              {templateFields.type
+                ? `Set by template: ${selectedTemplate?.name}`
+                : 'Choose the mod loader/platform to install'}
+            </small>
           </div>
 
           <div className="form-group">
@@ -206,8 +300,40 @@ function CreateServerForm({ onClose, onCreate }) {
             <small>Select a saved modpack for this server type (optional)</small>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="version">Minecraft Version *</label>
+          <TemplateSuggestions
+            serverType={formData.type}
+            modpackUrl={formData.modpack ? selectedModpack?.sourceUrl : null}
+            onSelect={handleTemplateSelect}
+          />
+
+          <button
+            type="button"
+            className="btn btn-link browse-templates-btn"
+            onClick={() => setShowTemplateBrowser(true)}
+          >
+            Browse all templates...
+          </button>
+
+          {selectedTemplate && (
+            <div className="selected-template-info">
+              <span className="template-label">Using template:</span>
+              <span className="template-name">{selectedTemplate.name}</span>
+              <button
+                type="button"
+                className="clear-template-btn"
+                onClick={() => setSelectedTemplate(null)}
+                title="Clear template selection"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          <div className={`form-group ${templateFields.version ? 'from-template' : ''}`}>
+            <label htmlFor="version">
+              Minecraft Version *
+              {templateFields.version && <span className="template-badge">from template</span>}
+            </label>
             <select
               id="version"
               name="version"
@@ -217,51 +343,90 @@ function CreateServerForm({ onClose, onCreate }) {
             >
               {currentVersionOptions.map((version) => (
                 <option key={version} value={version}>
-                  {version}
+                  {version}{templateFields.version && version === selectedTemplate?.minecraftVersion ? ' (template)' : ''}
                 </option>
               ))}
             </select>
             <small>
-              {selectedModpack?.gameVersions?.length
-                ? 'Versions provided by the selected modpack (newest first)'
-                : 'Common Minecraft versions (select the one your mods require)'}
+              {templateFields.version
+                ? `Set by template: ${selectedTemplate?.name}`
+                : selectedModpack?.gameVersions?.length
+                  ? 'Versions provided by the selected modpack (newest first)'
+                  : 'Common Minecraft versions (select the one your mods require)'}
             </small>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="memory">Memory Allocation *</label>
+          <div className={`form-group ${templateFields.memory ? 'from-template' : ''} ${userOverrides.memory ? 'user-override' : ''}`}>
+            <label htmlFor="memory">
+              Memory Allocation *
+              {templateFields.memory && <span className="template-badge">from template</span>}
+              {userOverrides.memory && selectedTemplate?.memory && (
+                <span className="override-badge">overridden</span>
+              )}
+            </label>
             <select
               id="memory"
               name="memory"
               value={formData.memory}
-              onChange={handleChange}
+              onChange={(e) => {
+                handleFieldChange('memory', e.target.value, () => {
+                  setFormData(prev => ({ ...prev, memory: e.target.value }));
+                });
+              }}
               required
             >
               <option value="1G">1 GB</option>
               <option value="2G">2 GB</option>
-              <option value="4G">4 GB (Recommended)</option>
+              <option value="4G">4 GB{!templateFields.memory && !userOverrides.memory ? ' (Recommended)' : ''}</option>
               <option value="6G">6 GB</option>
               <option value="8G">8 GB</option>
               <option value="12G">12 GB</option>
               <option value="16G">16 GB</option>
             </select>
-            <small>RAM allocated to the server</small>
+            <small>
+              {templateFields.memory
+                ? `Set by template: ${selectedTemplate?.name} (${selectedTemplate?.memory})`
+                : userOverrides.memory && selectedTemplate?.memory
+                  ? `Template recommended: ${selectedTemplate.memory}`
+                  : 'RAM allocated to the server'}
+            </small>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="cpuLimit">CPU Limit (cores)</label>
-            <input
-              type="number"
+          <div className={`form-group ${templateFields.cpuLimit ? 'from-template' : ''} ${userOverrides.cpuLimit ? 'user-override' : ''}`}>
+            <label htmlFor="cpuLimit">
+              CPU Limit (cores)
+              {templateFields.cpuLimit && <span className="template-badge">from template</span>}
+              {userOverrides.cpuLimit && selectedTemplate?.cpuLimit && (
+                <span className="override-badge">overridden</span>
+              )}
+            </label>
+            <select
               id="cpuLimit"
               name="cpuLimit"
               value={formData.cpuLimit}
-              onChange={handleChange}
-              min={0.5}
-              max={8}
-              step={0.5}
-              placeholder="2.0"
-            />
-            <small>Number of CPU cores (0.5 - 8.0)</small>
+              onChange={(e) => {
+                const value = parseFloat(e.target.value);
+                handleFieldChange('cpuLimit', value, () => {
+                  setFormData(prev => ({ ...prev, cpuLimit: value }));
+                });
+              }}
+            >
+              <option value={0.5}>0.5 cores</option>
+              <option value={1}>1 core</option>
+              <option value={1.5}>1.5 cores</option>
+              <option value={2}>2 cores</option>
+              <option value={3}>3 cores</option>
+              <option value={4}>4 cores</option>
+              <option value={6}>6 cores</option>
+              <option value={8}>8 cores</option>
+            </select>
+            <small>
+              {templateFields.cpuLimit
+                ? `Set by template: ${selectedTemplate?.name}`
+                : userOverrides.cpuLimit && selectedTemplate?.cpuLimit
+                  ? `Template recommended: ${selectedTemplate.cpuLimit} cores`
+                  : 'Number of CPU cores allocated to the server'}
+            </small>
           </div>
 
           <div className="form-group">
@@ -306,6 +471,14 @@ function CreateServerForm({ onClose, onCreate }) {
           </div>
         </form>
       </div>
+
+      {showTemplateBrowser && (
+        <TemplateBrowser
+          initialServerType={formData.type}
+          onSelect={handleTemplateSelect}
+          onClose={() => setShowTemplateBrowser(false)}
+        />
+      )}
     </div>
   );
 }

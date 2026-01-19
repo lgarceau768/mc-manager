@@ -14,6 +14,7 @@ import modpackImportService from './modpackImportService.js';
 import logger from '../utils/logger.js';
 import { getPreferredHost } from '../utils/network.js';
 import { NotFoundError, ConflictError, ValidationError } from '../utils/errors.js';
+import notificationService from './notificationService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -165,10 +166,11 @@ class ServerService {
    * Start a server
    */
   async startServer(serverId) {
+    let server;
     try {
       logger.info(`Starting server: ${serverId}`);
 
-      const server = Server.findById(serverId);
+      server = Server.findById(serverId);
       if (!server) {
         throw new NotFoundError(`Server not found: ${serverId}`);
       }
@@ -190,6 +192,12 @@ class ServerService {
       Server.update(serverId, { status: 'running' });
 
       logger.info(`Server started successfully: ${serverId}`);
+
+      // Send notification
+      notificationService.notify(serverId, 'serverStart', {
+        serverName: server.name
+      }).catch(err => logger.warn(`Failed to send start notification: ${err.message}`));
+
       const updated = Server.findById(serverId);
       return await this.withConnectionInfo({
         ...updated,
@@ -197,8 +205,17 @@ class ServerService {
       });
     } catch (error) {
       // Revert status on error
-      Server.update(serverId, { status: 'stopped' });
+      Server.update(serverId, { status: 'error' });
       logger.error(`Failed to start server: ${error.message}`);
+
+      // Send error notification if we have server info
+      if (server) {
+        notificationService.notify(serverId, 'serverError', {
+          serverName: server.name,
+          error: error.message
+        }).catch(err => logger.warn(`Failed to send error notification: ${err.message}`));
+      }
+
       throw error;
     }
   }
@@ -229,6 +246,12 @@ class ServerService {
       Server.update(serverId, { status: 'stopped' });
 
       logger.info(`Server stopped successfully: ${serverId}`);
+
+      // Send notification
+      notificationService.notify(serverId, 'serverStop', {
+        serverName: server.name
+      }).catch(err => logger.warn(`Failed to send stop notification: ${err.message}`));
+
       const updated = Server.findById(serverId);
       return await this.withConnectionInfo({
         ...updated,
@@ -261,6 +284,105 @@ class ServerService {
     } catch (error) {
       logger.error(`Failed to restart server: ${error.message}`);
       throw error;
+    }
+  }
+
+  /**
+   * Recreate the Docker container for a server
+   * Used when the container is removed/disconnected outside the application
+   */
+  async recreateContainer(serverId) {
+    try {
+      logger.info(`Recreating container for server: ${serverId}`);
+
+      const server = Server.findById(serverId);
+      if (!server) {
+        throw new NotFoundError(`Server not found: ${serverId}`);
+      }
+
+      // Check if container already exists and is valid
+      if (server.container_id) {
+        try {
+          const status = await dockerService.getContainerStatus(server.container_id);
+          if (status.status !== 'stopped' || status.running) {
+            throw new ConflictError('Container still exists. Stop and remove it first, or use restart instead.');
+          }
+        } catch (error) {
+          // Container doesn't exist or can't be inspected - this is expected
+          if (error.statusCode !== 404 && !(error instanceof ConflictError)) {
+            logger.debug(`Container ${server.container_id} not found, will recreate`);
+          } else if (error instanceof ConflictError) {
+            throw error;
+          }
+        }
+      }
+
+      // Ensure the volume path exists
+      const volumePath = server.volume_path;
+      const volumeHostPath = path.join(this.serversDataHostPath, server.id);
+
+      if (!fs.existsSync(volumePath)) {
+        fs.mkdirSync(volumePath, { recursive: true });
+        logger.info(`Created volume directory: ${volumePath}`);
+      }
+
+      // Ensure EULA is accepted
+      this.ensureEulaAccepted(volumePath);
+
+      // Create new container with stored settings
+      const containerId = await dockerService.createContainer({
+        serverId: server.id,
+        name: server.name,
+        version: server.version,
+        port: server.port,
+        memory: server.memory,
+        cpuLimit: server.cpu_limit,
+        volumePath,
+        volumeHostPath,
+        type: server.type
+      });
+
+      // Update database with new container ID
+      Server.update(serverId, {
+        container_id: containerId,
+        status: 'stopped'
+      });
+
+      logger.info(`Container recreated successfully for server ${serverId}: ${containerId}`);
+
+      const updatedServer = Server.findById(serverId);
+      return await this.withConnectionInfo({
+        ...updatedServer,
+        settings: this.getServerSettingsData(updatedServer),
+        containerRecreated: true
+      });
+    } catch (error) {
+      logger.error(`Failed to recreate container: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if a server's container exists
+   */
+  async checkContainerExists(serverId) {
+    const server = Server.findById(serverId);
+    if (!server) {
+      throw new NotFoundError(`Server not found: ${serverId}`);
+    }
+
+    if (!server.container_id) {
+      return { exists: false, reason: 'no_container_id' };
+    }
+
+    try {
+      await dockerService.getContainerStatus(server.container_id);
+      return { exists: true };
+    } catch (error) {
+      if (error.statusCode === 404) {
+        return { exists: false, reason: 'container_not_found' };
+      }
+      return { exists: false, reason: 'error', error: error.message };
     }
   }
 
@@ -310,18 +432,43 @@ class ServerService {
       }
       const settings = this.getServerSettingsData(server);
 
-      // If running, fetch stats
-      if (server.status === 'running' && server.container_id) {
+      // Get detailed container status if container exists
+      let containerStatus = null;
+      let stats = null;
+
+      if (server.container_id) {
         try {
-          const stats = await dockerService.getContainerStats(server.container_id);
-          return await this.withConnectionInfo({ ...server, stats, settings });
+          containerStatus = await dockerService.getContainerStatus(server.container_id);
+
+          // Sync database status with actual container status if needed
+          if (containerStatus.status === 'error' && server.status !== 'error') {
+            Server.update(serverId, { status: 'error' });
+          } else if (containerStatus.running && server.status === 'stopped') {
+            Server.update(serverId, { status: 'running' });
+          } else if (!containerStatus.running && server.status === 'running') {
+            Server.update(serverId, { status: 'stopped' });
+          }
+
+          // Get stats if container is running
+          if (containerStatus.running) {
+            try {
+              stats = await dockerService.getContainerStats(server.container_id);
+            } catch (statsError) {
+              logger.warn(`Failed to get stats for server ${serverId}: ${statsError.message}`);
+            }
+          }
         } catch (error) {
-          logger.warn(`Failed to get stats for server ${serverId}: ${error.message}`);
-          return await this.withConnectionInfo({ ...server, settings });
+          logger.warn(`Failed to get container status for server ${serverId}: ${error.message}`);
         }
       }
 
-      return await this.withConnectionInfo({ ...server, settings });
+      const updatedServer = Server.findById(serverId);
+      return await this.withConnectionInfo({
+        ...updatedServer,
+        stats,
+        settings,
+        containerStatus
+      });
     } catch (error) {
       logger.error(`Failed to get server details: ${error.message}`);
       throw error;
@@ -335,19 +482,42 @@ class ServerService {
     try {
       const servers = Server.findAll();
 
-      // Fetch stats for running servers
+      // Fetch stats and container status for all servers
       const serversWithStats = await Promise.all(
         servers.map(async (server) => {
-          if (server.status === 'running' && server.container_id) {
+          let containerStatus = null;
+          let stats = null;
+
+          if (server.container_id) {
             try {
-              const stats = await dockerService.getContainerStats(server.container_id);
-              return await this.withConnectionInfo({ ...server, stats });
+              containerStatus = await dockerService.getContainerStatus(server.container_id);
+
+              // Sync database status with actual container status if needed
+              if (containerStatus.status === 'error' && server.status !== 'error') {
+                Server.update(server.id, { status: 'error' });
+                server.status = 'error';
+              } else if (containerStatus.running && server.status === 'stopped') {
+                Server.update(server.id, { status: 'running' });
+                server.status = 'running';
+              } else if (!containerStatus.running && server.status === 'running') {
+                Server.update(server.id, { status: 'stopped' });
+                server.status = 'stopped';
+              }
+
+              // Get stats if container is running
+              if (containerStatus.running) {
+                try {
+                  stats = await dockerService.getContainerStats(server.container_id);
+                } catch (statsError) {
+                  logger.warn(`Failed to get stats for server ${server.id}: ${statsError.message}`);
+                }
+              }
             } catch (error) {
-              logger.warn(`Failed to get stats for server ${server.id}: ${error.message}`);
-              return await this.withConnectionInfo(server);
+              logger.warn(`Failed to get container status for server ${server.id}: ${error.message}`);
             }
           }
-          return await this.withConnectionInfo(server);
+
+          return await this.withConnectionInfo({ ...server, stats, containerStatus });
         })
       );
 
@@ -550,6 +720,101 @@ class ServerService {
       ...server,
       settings: updatedSettings
     });
+  }
+
+  /**
+   * Update server resource allocation (memory, CPU)
+   * Requires server restart to take effect
+   */
+  async updateServerResources(serverId, resources) {
+    const server = Server.findById(serverId);
+    if (!server) {
+      throw new NotFoundError(`Server not found: ${serverId}`);
+    }
+
+    const updates = {};
+
+    if (resources.memory !== undefined) {
+      updates.memory = resources.memory;
+    }
+
+    if (resources.cpuLimit !== undefined) {
+      updates.cpu_limit = resources.cpuLimit;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return await this.getServerDetails(serverId);
+    }
+
+    // Update in database
+    Server.update(serverId, updates);
+
+    // Update docker-compose.yml
+    const composePath = path.join(server.volume_path, 'docker-compose.yml');
+    if (fs.existsSync(composePath)) {
+      try {
+        const composeContent = fs.readFileSync(composePath, 'utf8');
+        const compose = YAML.parse(composeContent);
+
+        const serviceName = Object.keys(compose.services)[0];
+        const service = compose.services[serviceName];
+
+        if (resources.memory) {
+          // Update MEMORY environment variable
+          if (service.environment) {
+            if (Array.isArray(service.environment)) {
+              const memIdx = service.environment.findIndex(e =>
+                typeof e === 'string' && e.startsWith('MEMORY=')
+              );
+              if (memIdx >= 0) {
+                service.environment[memIdx] = `MEMORY=${resources.memory}`;
+              } else {
+                service.environment.push(`MEMORY=${resources.memory}`);
+              }
+            } else {
+              service.environment.MEMORY = resources.memory;
+            }
+          }
+
+          // Update deploy resources
+          if (!service.deploy) service.deploy = {};
+          if (!service.deploy.resources) service.deploy.resources = {};
+          if (!service.deploy.resources.limits) service.deploy.resources.limits = {};
+
+          // Set memory limit slightly higher than heap
+          const memMatch = resources.memory.match(/^(\d+)([GM])$/i);
+          if (memMatch) {
+            const amount = parseInt(memMatch[1]);
+            const unit = memMatch[2].toUpperCase();
+            // Add 1G buffer for non-heap memory
+            const limitAmount = unit === 'G' ? amount + 1 : Math.ceil(amount / 1024) + 1;
+            service.deploy.resources.limits.memory = `${limitAmount}G`;
+          }
+        }
+
+        if (resources.cpuLimit) {
+          if (!service.deploy) service.deploy = {};
+          if (!service.deploy.resources) service.deploy.resources = {};
+          if (!service.deploy.resources.limits) service.deploy.resources.limits = {};
+          service.deploy.resources.limits.cpus = String(resources.cpuLimit);
+        }
+
+        fs.writeFileSync(composePath, YAML.stringify(compose));
+        logger.info(`Updated docker-compose.yml for server ${serverId}`);
+      } catch (error) {
+        logger.warn(`Failed to update docker-compose.yml: ${error.message}`);
+      }
+    }
+
+    // Return updated server details
+    const updatedServer = await this.getServerDetails(serverId);
+
+    // Add a flag indicating restart is needed
+    if (server.status === 'running') {
+      updatedServer.restartRequired = true;
+    }
+
+    return updatedServer;
   }
 
   /**

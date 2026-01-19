@@ -100,6 +100,42 @@ export const updateServerSettingsSchema = Joi.object({
   viewDistance: Joi.number().integer().min(2).max(32).optional()
 }).min(1);
 
+export const updateServerResourcesSchema = Joi.object({
+  memory: Joi.string()
+    .pattern(/^[1-9][0-9]*(G|M)$/)
+    .optional()
+    .custom((value, helpers) => {
+      const match = value.match(/^([1-9][0-9]*)(G|M)$/);
+      if (!match) return helpers.error('string.pattern.base');
+
+      const amount = parseInt(match[1]);
+      const unit = match[2];
+
+      // Convert to MB for validation
+      const memoryMB = unit === 'G' ? amount * 1024 : amount;
+
+      // Minimum 512MB, maximum 16GB
+      if (memoryMB < 512 || memoryMB > 16384) {
+        return helpers.error('any.invalid');
+      }
+
+      return value;
+    })
+    .messages({
+      'string.pattern.base': 'Memory must be in format like "4G" or "2048M"',
+      'any.invalid': 'Memory must be between 512M and 16G'
+    }),
+
+  cpuLimit: Joi.number()
+    .min(0.5)
+    .max(8.0)
+    .optional()
+    .messages({
+      'number.min': 'CPU limit must be at least 0.5',
+      'number.max': 'CPU limit must not exceed 8.0'
+    })
+}).min(1);
+
 /**
  * Validation middleware factory
  */

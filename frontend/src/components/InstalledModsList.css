@@ -1,0 +1,242 @@
+.installed-mods {
+  background: var(--card-bg, white);
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  overflow: hidden;
+}
+
+.mods-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-secondary, #f8fafc);
+}
+
+.mods-header h4 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  color: var(--text-primary, #1e293b);
+}
+
+.mod-count {
+  background: var(--text-secondary, #64748b);
+  color: white;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.mods-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.running-warning {
+  padding: 0.75rem 1.25rem;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #fde68a;
+}
+
+.mods-error {
+  padding: 1rem 1.25rem;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.mods-loading {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary, #64748b);
+}
+
+.no-mods {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary, #64748b);
+}
+
+.no-mods p {
+  margin: 0.25rem 0;
+}
+
+.no-mods .hint {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.mods-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mods-table th,
+.mods-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color-light, #f1f5f9);
+}
+
+.mods-table th {
+  background: var(--bg-secondary, #f8fafc);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text-secondary, #64748b);
+}
+
+.mods-table tbody tr:hover {
+  background: var(--bg-hover, #f8fafc);
+}
+
+.mods-table .disabled-mod {
+  opacity: 0.6;
+}
+
+.th-icon {
+  width: 40px;
+}
+
+.mod-icon-cell {
+  width: 40px;
+  padding-right: 0 !important;
+}
+
+.mod-name {
+  font-weight: 500;
+  max-width: 250px;
+}
+
+.mod-name span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mod-authors {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-secondary, #64748b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mod-version {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.mod-size {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.mod-status .status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.enabled {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.status-badge.disabled {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.mod-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.btn-xs {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+/* Search Toggle Section */
+.search-toggle-section {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-secondary, #f8fafc);
+}
+
+.search-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-primary, #1e293b);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: left;
+  transition: color 0.2s ease;
+}
+
+.search-toggle-btn:hover {
+  color: var(--primary-color, #0ea5e9);
+}
+
+.search-toggle-btn .toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  width: 1rem;
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.search-toggle-btn .toggle-text {
+  flex: 1;
+}
+
+.search-toggle-btn.expanded .toggle-icon {
+  transform: translateY(-2px);
+}
+
+/* Embedded Search */
+.embedded-search {
+  padding: 1rem 0;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+    overflow: visible;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .mods-table th:nth-child(3),
+  .mods-table td:nth-child(3) {
+    display: none;
+  }
+}
